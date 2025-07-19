@@ -39,6 +39,14 @@ class UR_Robotiq_2f_85_Controller(UR5):
         self.desired_ee_rot = []
         self.tool_z_offset = 0.21
 
+    def init_robot(self):
+        rtde_c = rtde_control.RTDEControlInterface(self.ip)
+        rtde_r = rtde_receive.RTDEReceiveInterface(self.ip)
+        actual_q = rtde_r.getActualQ()
+        print("Init q: ", actual_q)
+        actual_q = rtde_r.getActualQ()
+        return rtde_c, rtde_r
+
     def init_gripper(self):
         gripper = RobotiqGripper(self.ip, 63352)
         gripper.connect()
@@ -104,7 +112,13 @@ class UR_Robotiq_2f_85_Controller(UR5):
 
 def single_arm_test():
     dt = 0.002
-    controller0 = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.100", init_gripper=True)
+    robot = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.100", init_gripper=False)
+    init_q = robot.get_joint_state()
+    print("Initial joint state:", init_q)
+    init_q[0]  += 0.1
+    robot.moveJ(init_q, 0.5, 0.5)
+    init_q[0]  -= 0.1
+    robot.moveJ(init_q, 0.5, 0.5)
     # controller0.close_gripper()
     # controller0.open_gripper()
 
