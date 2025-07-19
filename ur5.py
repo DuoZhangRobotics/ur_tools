@@ -5,6 +5,9 @@ class UR5:
     
     def moveJ(self, pos, speed, acceleration):
         self.rtde_c.moveJ(pos, speed, acceleration)
+    
+    def moveL(self, pos, speed, acceleration):
+        self.rtde_c.moveL(pos, speed, acceleration)
 
     def servoJ(self, pos, speed, acceleration, look_ahead, gain):
         self.rtde_c.servoJ(pos, speed, acceleration, self.dt, look_ahead, gain)

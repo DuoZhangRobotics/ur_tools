@@ -608,10 +608,23 @@ if __name__ == "__main__":
     robot = UR5_VGA10()
     init_q = robot.get_joint_state()
     print("Initial joint state:", init_q)
+    init_ee_position = robot.get_ee_state()
+    print("Initial end-effector position:", init_ee_position)
     init_q[0]  += 0.1
     robot.moveJ(init_q, 0.5, 0.5)
     init_q[0]  -= 0.1
     robot.moveJ(init_q, 0.5, 0.5)
+
+    init_ee_position[2] =  0.040
+    robot.moveL(init_ee_position, 0.5, 0.5)
+    ee_position = robot.get_ee_state()
+    print("End-effector position after move:", ee_position)
+    robot.vg_grip()
+    init_ee_position[2] +=  0.2
+    robot.moveL(init_ee_position, 0.5, 0.5)
+    ee_position = robot.get_ee_state()
+    print("End-effector position after move:", ee_position)
+    robot.vg_release()
 
     # from rtde_control import Path
     # velocity = 0.5

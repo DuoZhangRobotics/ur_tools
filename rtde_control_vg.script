@@ -1,0 +1,69 @@
+# NODE_CONTROL_LOOP_BEGINS
+
+        ###################################
+        # RTDE Control script - Main loop #
+        ###################################
+
+        textmsg("RTDE Control Script Loaded (02.04.2023-17:50)")
+
+        # Initialize gain and damping for force mode to a more stable default
+        force_mode_set_gain_scaling(0.5)
+        force_mode_set_damping(0.025)
+
+        keep_running = True
+        executing_cmd = False
+        reset_async_progress()
+        signal_ready()
+
+        vg_cmd_in_reg = 19
+        vg_cmd_out_reg = 19
+        vg_cmd_received = False
+        vg_read_vaccum = False
+        tool_index = vg_index_get()
+
+        while keep_running:
+
+            # control vg grip and release, control channel A - 0, channel B - 1
+            vg_state = read_input_integer_reg(vg_cmd_in_reg)
+            if vg_state == 1 and not vg_cmd_received:
+                textmsg("vg10_grip")
+                vg10_grip(2, 80, 0, False, tool_index)
+                vg_cmd_received = True
+                vg_read_vaccum = True
+            elif vg_state == 2 and not vg_cmd_received:
+                textmsg("vg10_release")
+                vg10_release(2, 0, False, tool_index)
+                vg_cmd_received = True
+                vg_read_vaccum = True
+            elif vg_state == 0:
+                vg_cmd_received = False
+                vg_read_vaccum = False
+            end
+            if vg_read_vaccum:
+                vacuum_a = get_vg_Vacuum_A()
+                write_output_integer_reg(vg_cmd_out_reg, vacuum_a)
+            end
+
+            cmd = rtde_cmd()
+            if cmd == 24 or cmd == 11 or cmd == 9 or cmd == 10 or cmd == 6 or cmd == 25 or cmd == 26 or cmd == 27 or cmd == 38 or cmd == 58:
+                # for realtime commands simply process and signal ready.
+                keep_running = process_cmd()
+                signal_ready()
+            else:
+                # regular mode
+                if cmd == 0:
+                    executing_cmd = False
+                    signal_ready()
+                else:
+                    if not executing_cmd:
+                        keep_running = process_cmd()
+                    end
+                    executing_cmd = True
+                end
+            end
+
+            sync()
+
+        end
+        textmsg("RTDE Control Script Terminated")
+# NODE_CONTROL_LOOP_ENDS
