@@ -23,27 +23,12 @@ from ur_tools.camera.utils import *
 class Camera:
     """Customized realsense camera"""
 
-    def __init__(self):
+    def __init__(self, calibrated=True):
         aruco_params = cv2.aruco.DetectorParameters()
         aruco_dict_arm = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
         aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
         self.aruco_detector_board = cv2.aruco.ArucoDetector(aruco_dict_board, aruco_params)
         self.aruco_detector_arm = cv2.aruco.ArucoDetector(aruco_dict_arm, aruco_params)
-
-        self.tag_loc_robot = {
-            0: [0.19514884050295786, -0.2789217622033657, 0.024688756894499786],
-            1: [-0.061882278643938825, -0.2721783258020401, 0.024692004293948716],
-            2: [0.07224110656573556, -0.2694291952837243, 0.024582769222026485],
-            3: [-0.1695565679259034, -0.27247841040542053, 0.023187751613381907],
-            4: [0.03236218205545476, -0.4732513223302973, 0.024181111238139513],
-            5: [-0.132674042768115, -0.46637420789349565, 0.023750227349813746],
-            6: [-0.1738424081148952, -0.6465115193009411, 0.026166903072849274],
-            7: [-0.015512927882358649, -0.6502025962063387, 0.026021860154627457],
-            8: [0.17149243890098756, -0.4839559592376406, 0.02573180310442666],
-            9: [0.10237498210954554, -0.6348130087147754, 0.0249748453488578],
-        }
-
-        self.tag_length_board = 0.1
 
         # Create a pipeline
         self.pipeline = rs.pipeline()
@@ -161,9 +146,10 @@ class Camera:
         while time.time() - start_time < 0.1:
             self.pipeline.wait_for_frames()
 
-        # self.camera_pose = np.loadtxt("camera_pose.txt", delimiter=" ")
-        # self.camera_pose_inv = np.linalg.inv(self.camera_pose)
-        # print("Reading camera pose from file\n", self.camera_pose)
+        if calibrated:
+            self.cam2ee = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cam2ee_pose.txt'), delimiter=" ")
+            self.cam2ee_inv = np.linalg.inv(self.cam2ee)
+            print("Reading camera pose from file\n", self.cam2ee)
         self.configs = [{
             "image_size": (color_profile.height(), color_profile.width()),
             "intrinsics": self.intrinsics,
@@ -172,10 +158,6 @@ class Camera:
             "zrange": (0.01, 1.0),
         }]
 
-        # if os.path.exists("camera2ee_pose.txt"):
-        #     self.camera2ee_pose = np.loadtxt("camera2ee_pose.txt", delimiter=" ")
-        #     self.camera2ee_pose_inv = np.linalg.inv(self.camera2ee_pose)
-        #     print("Reading camera2ee pose from file\n", self.camera2ee_pose)
 
     def stop_streaming(self):
         """Release camera resource"""
@@ -230,6 +212,35 @@ class Camera:
             depth_image[depth_image < self.clipping_distance_in_meters[0]] = 0
 
         return color_image, depth_image
+    
+
+    def show_data(self, matplotlib=False):
+        """Show color and depth image"""
+        if matplotlib:
+            import matplotlib.pyplot as plt
+            color_image, depth_image = self.get_data()
+            plt.subplot(121)
+            plt.imshow(color_image)
+            plt.title("Color Image")
+            plt.axis("off")
+            plt.subplot(122)
+            depth_normalized = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX)
+            depth_normalized = np.uint8(depth_normalized)
+            depth_normalized = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
+            plt.imshow(depth_normalized)
+            plt.title("Depth Image")
+            plt.axis("off")
+            plt.show()
+        else:
+            color_image, depth_image = self.get_data()
+            color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
+            depth_normalized = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX)
+            depth_normalized = np.uint8(depth_normalized)
+            depth_normalized = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
+            cv2.imshow("Color Image", color_image)
+            cv2.imshow("Depth Image", depth_normalized)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
 
     def read_tags_board(self, color_img):
@@ -251,141 +262,19 @@ class Camera:
 
         return tag_loc_camera
 
-    def calibrate_pnp(self, use_depth=False):
-        measured_points = []
-        image_points = []
-        image_points_depth = []
-        tag_ids = []
-        color_img, depth_img = self.get_data()
-        tag_loc_camera = self.read_tags_board(color_img)
-
-        for tag_id in self.tag_loc_robot:
-            measured_points.append(self.tag_loc_robot[tag_id])
-            x, y = tag_loc_camera[tag_id]
-            z = depth_img[int(y), int(x)]
-            image_points_depth.append(z)
-            tag_ids.append(tag_id)
-            if use_depth:
-                x = (x - self.intrinsics[0, 2]) * z / self.intrinsics[0, 0]
-                y = (y - self.intrinsics[1, 2]) * z / self.intrinsics[1, 1]
-                image_points.append([x, y, z])
-            else:
-                image_points.append(tag_loc_camera[tag_id])
-
-        
-        measured_points = np.array(measured_points, dtype=np.float32)
-        image_points = np.array(image_points, dtype=np.float32)
-        print(measured_points)
-        print(self.tag_loc_robot)
-        print("Measured points: ", measured_points.shape)
-        print("Image points: ", image_points.shape)
-        image_points_depth = np.array(image_points_depth, dtype=np.float32)
-
-        print("Calibrating...")
-        if use_depth:
-            R_matrix, tvec = get_rigid_transform(measured_points, image_points)
-            tvec = tvec.reshape(3, 1)
-        else:
-            _, rvec, tvec = cv2.solvePnP(measured_points, image_points, self.intrinsics, self.distortion_coeffs)
-            R_matrix, _ = cv2.Rodrigues(rvec)
-
-        camera_pose_world2camera = np.hstack((R_matrix, tvec))
-        camera_pose_world2camera = np.vstack((camera_pose_world2camera, np.array([0, 0, 0, 1])))
-        camera_pose_camera2world = np.linalg.inv(camera_pose_world2camera)
-        self.camera_pose = camera_pose_camera2world
-        self.camera_pose_inv = camera_pose_world2camera
-
-        # Compute calibration error
-        if use_depth:
-            observed_points = self.pos_in_camera_to_robot(image_points)
-        else:
-            observed_points = self.pos_in_image_to_robot(image_points, depths=image_points_depth)
-        error = self.compute_calibration_error(measured_points, observed_points)
-        print("Mean error: ", np.mean(error))
-        print("Std error: ", np.std(error))
-        print("Tag ids: ", tag_ids)
-        print("Per marker error: ", error)
-
-        # Save camera optimized offset and camera pose
-        print("Saving...")
-        np.savetxt("camera_pose.txt", self.camera_pose, delimiter=" ")
-        print(self.camera_pose)
-        print("Done.")
-
-        self.configs[0]["position"] = self.camera_pose[:3, 3]
-        self.configs[0]["rotation"] = R.from_matrix(self.camera_pose[:3, :3]).as_quat()
-
-        return self.camera_pose
-
-    def calibrate(self):
-        self.measured_pts = []
-        self.observed_pts = []
-        self.observed_pix = []
-        self.world2camera = np.eye(4)
-        tag_ids = []
-
-        color_img, depth_img = self.get_data()
-        tag_loc_camera = self.read_tags_board(color_img)
-        for tag_id in self.tag_loc_robot:
-            checkerboard_pix = [int(tag_loc_camera[tag_id][0]), int(tag_loc_camera[tag_id][1])]
-            checkerboard_z = depth_img[checkerboard_pix[1]][checkerboard_pix[0]]
-            checkerboard_x = np.multiply(
-                checkerboard_pix[0] - self.intrinsics[0][2], checkerboard_z / self.intrinsics[0][0]
-            )
-            checkerboard_y = np.multiply(
-                checkerboard_pix[1] - self.intrinsics[1][2], checkerboard_z / self.intrinsics[1][1]
-            )
-            self.observed_pts.append([checkerboard_x, checkerboard_y, checkerboard_z])
-            self.measured_pts.append(self.tag_loc_robot[tag_id])
-            self.observed_pix.append(checkerboard_pix)
-            tag_ids.append(tag_id)
-        self.measured_pts = np.asarray(self.measured_pts)
-        self.observed_pts = np.asarray(self.observed_pts)
-        self.observed_pix = np.asarray(self.observed_pix)
-
-        print("Calibrating...")
-        z_scale_init = 1
-        optim_result = optimize.minimize(
-            self._get_rigid_transform_error, np.asarray(z_scale_init), method="Nelder-Mead"
-        )
-        camera_depth_offset = optim_result.x
-        camera_pose = np.linalg.inv(self.world2camera)
-        self.camera_pose = camera_pose
-        self.camera_pose_inv = self.world2camera
-
-        # Compute calibration error
-        observed_points = self.pos_in_camera_to_robot(self.observed_pts)
-        error = self.compute_calibration_error(self.measured_pts, observed_points)
-        print("Mean error: ", np.mean(error))
-        print("Std error: ", np.std(error))
-        print("Tag ids: ", tag_ids)
-        print("Per marker error: ", error)
-
-        # Save camera optimized offset and camera pose
-        print("Saving...")
-        np.savetxt("real_camera/camera_depth_scale.txt", camera_depth_offset, delimiter=" ")
-        np.savetxt("real_camera/camera_pose.txt", camera_pose, delimiter=" ")
-        print(camera_pose)
-        print("Done.")
-
-        self.configs[0]["position"] = self.camera_pose[:3, 3]
-        self.configs[0]["rotation"] = R.from_matrix(self.camera_pose[:3, :3]).as_quat()
-
-        return camera_pose
-
     def pose_in_robot_to_image(self, poses_in_robot):
         """Convert 3D points in robot coordinate to 2D points in image coordinate"""
-        rvec = cv2.Rodrigues(self.camera_pose_inv[:3, :3])[0]
-        tvec = self.camera_pose_inv[:3, 3]
+        rvec = cv2.Rodrigues(self.cam2ee_inv[:3, :3])[0]
+        tvec = self.cam2ee_inv[:3, 3]
         projected_points, _ = cv2.projectPoints(poses_in_robot, rvec, tvec, self.intrinsics, self.distortion_coeffs)
         return projected_points
 
-    def pos_in_camera_to_robot(self, points_in_camera):
+    def pos_in_camera_to_ee(self, points_in_camera):
         """
         Args: xyz_in_camera: 3D point in camera coordinate
         """
         homogeneous_points = np.hstack((points_in_camera, np.ones((len(points_in_camera), 1))))
-        homogeneous_points_world = np.dot(self.camera_pose, homogeneous_points.T).T
+        homogeneous_points_world = np.dot(self.cam2ee, homogeneous_points.T).T
 
         return homogeneous_points_world[:, :3]
 
@@ -408,7 +297,7 @@ class Camera:
         scaled_points_homogeneous = np.column_stack((scaled_points, np.ones(len(scaled_points))))
 
         # Transform to robot coordinates
-        world_points = (self.camera_pose @ scaled_points_homogeneous.T).T
+        world_points = (self.cam2ee @ scaled_points_homogeneous.T).T
 
         return world_points[:, :3]
 
@@ -439,75 +328,6 @@ class Camera:
         # print("RMSE: ", rmse)
         return rmse
 
-    def compute_calibration_error(self, measured_points, observed_points):
-        """Compute the calibration error between measured points and observed points"""
-        error = np.sqrt(np.sum((measured_points - observed_points) ** 2, axis=1))
-        return error
-
 
 if __name__ == "__main__":
-
     camera = Camera()
-
-    use_marker_on_arm = False
-
-    use_checkboard_eye_in_hand = False
-
-    if use_marker_on_arm or use_checkboard_eye_in_hand:
-        print("In first condition")
-        # Just visualize the marker on the arm
-        from rtde_receive import RTDEReceiveInterface as RTDEReceive
-        rtde_r = RTDEReceive("172.17.139.103", 100, use_upper_range_registers=False)
-        recorded_poses = []
-    else:
-        # Calibrate the camera pose with a board
-        # camera.calibrate()
-        # camera.calibrate_pnp()
-        print("In second condition")
-        camera.calibrate_pnp(True)
-
-    # while True:
-    #     color_img, depth_img = camera.get_data()
-
-    #     if use_checkboard_eye_in_hand:
-    #         gray = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
-    #         checkerboard_size = (9, 6)
-    #         ret, corners = cv2.findChessboardCorners(gray, checkerboard_size)
-    #         if ret:
-    #             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    #             corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-    #             cv2.drawChessboardCorners(color_img, checkerboard_size, corners, ret)
-    #             print(rtde_r.getActualTCPPose())
-    #     else:
-    #         gray = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
-    #         if use_marker_on_arm:
-    #             corners, ids, rejected_img_points = camera.aruco_detector_arm.detectMarkers(gray)
-    #             print(rtde_r.getActualQ())
-    #         else:
-    #             corners, ids, rejected_img_points = camera.aruco_detector_board.detectMarkers(gray)
-
-    #         if len(corners) > 0:
-    #             cv2.aruco.drawDetectedMarkers(color_img, corners, ids)
-    #             for i in range(0, len(ids)):
-    #                 rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(
-    #                     corners[i], camera.tag_length_board, camera.intrinsics, camera.distortion_coeffs
-    #                 )
-    #                 cv2.drawFrameAxes(color_img, camera.intrinsics, camera.distortion_coeffs, rvec, tvec, 0.1)
-
-    #         points_in_robot = np.array(list(camera.tag_loc_robot.values()))
-    #         projected_points = camera.pose_in_robot_to_image(points_in_robot)
-    #         # for point in projected_points:
-    #         #     cv2.circle(color_img, (int(point[0][0]), int(point[0][1])), 5, (50, 100, 255), -1)
-
-    #     cv2.imshow("frame color", color_img)
-    #     cv2.imshow("frame depth", depth_img)
-    #     key = cv2.waitKey(1)
-    #     if key == ord("q"):
-    #         cv2.destroyAllWindows()
-    #         break
-    #     if key == ord('s'):
-    #         this_pose = rtde_r.getActualTCPPose()
-    #         recorded_poses.append(this_pose)
-    #         print(this_pose)
-
-    # print(recorded_poses)

@@ -58,7 +58,7 @@ def calibrate_eye_in_hand():
     initial_guess_cam2ee = None         # provide this if calibrateHandEye is not good
     # =========================================================================
 
-    camera = Camera()
+    camera = Camera(calibrated=False)
 
     # Connect robot
     rtde_c = RTDEControl(_ip)
