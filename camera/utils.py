@@ -97,43 +97,36 @@ def calibrate_eye_hand(R_gripper2base, t_gripper2base, R_target2cam, t_target2ca
     
     return results
 
-def get_board_pose(color_img, aruco_detector:cv2.aruco.ArucoDetector, charuco_board, camera_matrix, dist_coeffs, plot=False):
+def get_board_pose(color_img, charuco_detector, charuco_board,
+                   camera_matrix, dist_coeffs, plot=False):
     gray = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
-    corners, ids, rejected_img_points = aruco_detector.detectMarkers(gray)
-    number_markers = (charuco_board.getChessboardSize()[0] - 1) * (charuco_board.getChessboardSize()[1] - 1)
-    print("Number of IDs: ", len(ids), "number of markers: ", number_markers)
 
-    if len(corners) > number_markers / 2:
-        # Refine detected markers
-        corners, ids, rejected, recovered = aruco_detector.refineDetectedMarkers(gray, charuco_board, corners, ids, rejected_img_points)
+    cc, cid, mc, mid = charuco_detector.detectBoard(gray)
+    if cc is None or len(cc) == 0:
+        return None, None, None, color_img
 
-        # Interpolate charuco corners
-        retval, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
-            corners, ids, gray, charuco_board
-        )        
+    if plot:
+        color_img = cv2.aruco.drawDetectedCornersCharuco(color_img, cc, cid)
 
-        if charuco_corners is not None and charuco_ids is not None:
-            # Draw corners and ids
-            if plot:
-                color_img = cv2.aruco.drawDetectedCornersCharuco(color_img, charuco_corners, charuco_ids)
+    objp, imgp = charuco_board.matchImagePoints(cc, cid)
+    if len(objp) < 4:
+        return None, None, None, color_img
 
-            # Estimate pose
-            retval, rvec, tvec = cv2.aruco.estimatePoseCharucoBoard(
-                charuco_corners, charuco_ids, charuco_board, camera_matrix, dist_coeffs, np.empty(1), np.empty(1)
-            )
+    success, rvec, tvec = cv2.solvePnP(
+        objp, imgp,
+        camera_matrix, dist_coeffs,
+        flags=cv2.SOLVEPNP_ITERATIVE
+    )
 
-            if retval:
-                # Draw axis
-                if plot:
-                    cv2.drawFrameAxes(color_img, camera_matrix, dist_coeffs, rvec, tvec, 0.1, thickness=1)
+    if not success:
+        return None, None, None, color_img
 
-                board_origin_3d = np.array([[0., 0., 0.]])
-                board_origin_pixel, _ = cv2.projectPoints(board_origin_3d, rvec, tvec, camera_matrix, dist_coeffs)
-                board_origin_pixel = board_origin_pixel.ravel()
+    if plot:
+        cv2.drawFrameAxes(color_img, camera_matrix, dist_coeffs, rvec, tvec, 0.1)
 
-                return rvec, tvec, board_origin_pixel, color_img
-        
-    return None, None, None, color_img
+    origin = np.array([[0., 0., 0.]], dtype=np.float32)
+    px, _ = cv2.projectPoints(origin, rvec, tvec, camera_matrix, dist_coeffs)
+    return rvec, tvec, px.ravel(), color_img
 
 def get_marker_pose(color_img, aruco_detector, marker_id, marker_length, camera_matrix, dist_coeffs):
     gray = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)

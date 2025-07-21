@@ -47,18 +47,14 @@ if __name__ == "__main__":
 
     target = [0, -0.5, 0]               # rough position of the target (calibration board)
     y_limits = [-0.6, -0.3]             # y limits for the end-effector
-    y_limits = [-0.5, -0.5]             # y limits for the end-effector
     x_limits = [-0.1, 0.1]              # x limits for the end-effector
-    x_limits = [-0.0, 0.0]              # x limits for the end-effector
     z_heights = [0.3, 0.35, 0.4]        # randomly pick z from this list
-    z_heights = [0.3]        # randomly pick z from this list
     up_axis = [0, -1, 0]                # camera up axis when looking at the target #Duo: This does not mean the direction of the lens. 
                                         # It literally means the up axis of a robot. If you put the camera on the table while the lens is facing you,
                                         # the up axis now is [0, 0, 1]
     offset_rpy = [0, np.pi, 0]          # adjust the rpy of the camera to match the robot's coordinate system
-    randomness_up = 0.0                 # add randomness in the up axis
+    randomness_up = 0.2                 # add randomness in the up axis
     x_num, y_num = 5, 5                 # sample points for the end-effector wihin the limits
-    x_num, y_num = 1, 1                 # sample points for the end-effector wihin the limits
     initial_guess_cam2ee = None         # provide this if calibrateHandEye is not good
     # =========================================================================
 
@@ -68,8 +64,9 @@ if __name__ == "__main__":
     rtde_c = RTDEControl(_ip)
     rtde_r = RTDEReceive(_ip, use_upper_range_registers=False)
 
-    aruco_params = cv2.aruco.DetectorParameters()
-    aruco_detector_board = cv2.aruco.ArucoDetector(aruco_dict_board, aruco_params)
+    # aruco_params = cv2.aruco.DetectorParameters()
+    # aruco_detector_board = cv2.aruco.ArucoDetector(aruco_dict_board, aruco_params)
+    charuco_detector = cv2.aruco.CharucoDetector(charuco_board)
 
     # prepare ee configs
     x_values = np.linspace(x_limits[0], x_limits[1], x_num)
@@ -104,7 +101,7 @@ if __name__ == "__main__":
         # prepare marker pose
         color_img, depth_img = camera.get_data()
         color_img = cv2.cvtColor(color_img, cv2.COLOR_RGB2BGR)
-        rvec, tvec, marker_pos, color_img = get_board_pose(color_img, aruco_detector_board, charuco_board, camera.intrinsics, camera.distortion_coeffs, plot=True)
+        rvec, tvec, marker_pos, color_img = get_board_pose(color_img, charuco_detector, charuco_board, camera.intrinsics, camera.distortion_coeffs, plot=True)
 
         if rvec is not None and tvec is not None:
             # Store target (marker) to camera transformation
