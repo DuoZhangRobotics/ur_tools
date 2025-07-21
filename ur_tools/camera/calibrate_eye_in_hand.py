@@ -9,9 +9,9 @@ from scipy.optimize import least_squares
 from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
-from ur_control.utils import generate_6d_pose, calibrate_eye_hand, reprojection_error_eye_in_hand, get_board_pose
+from ur_tools.camera.utils import generate_6d_pose, calibrate_eye_hand, reprojection_error_eye_in_hand, get_board_pose
 
-from realsense_camera import Camera
+from ur_tools.camera.realsense_camera import Camera
 
 
 def calibrate_eye_in_hand():

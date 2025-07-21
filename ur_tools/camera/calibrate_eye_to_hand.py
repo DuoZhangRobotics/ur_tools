@@ -8,9 +8,9 @@ from scipy.optimize import least_squares
 from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
-from ur_control.utils import *
+from ur_tools.camera.utils import *
 
-from realsense_camera import Camera
+from ur_tools.camera.realsense_camera import Camera
 
 
 if __name__ == "__main__":
