@@ -12,6 +12,8 @@ from ur_tools.ur_control.ur5 import UR5
 
 class UR5_VGA10(UR5):
     def __init__(self):
+        _ip = "172.17.139.100"
+        super().__init__(_ip)
         self.rtde_frequency = 100.0
         self.joint_acc = 0.4
         self.joint_vel = 0.2
@@ -50,10 +52,13 @@ class UR5_VGA10(UR5):
             -0.17452842393984014
             ]   # robot will go here before starting the calibration
 
+        self.ee_home = [
+            0, -0.5, 0.3, 0, np.pi, 0
+        ]
+    
         # Use external UR cap, on the panel -> program, need to have
         # BeforeStart -> script: rtde_initialize_vg.script
         # Robot Program -> script: rtde_control_vg.script
-        _ip = "172.17.139.100"
         self.rtde_c = RTDEControl(_ip, self.rtde_frequency, RTDEControl.FLAG_USE_EXT_UR_CAP)
         self.rtde_r = RTDEReceive(_ip, self.rtde_frequency, use_upper_range_registers=False)
         self.rtde_i = RTDEIO(_ip, self.rtde_frequency, use_upper_range_registers=False)
@@ -114,9 +119,11 @@ class UR5_VGA10(UR5):
     
     def go_home(self):
         print("Moving to home position...")
-        self.moveJ(self.home, self.joint_vel_slow, self.joint_acc_slow)
+        # self.moveJ(self.home, self.joint_vel_slow, self.joint_acc_slow)
+        self.moveL(self.ee_home, self.tool_vel, self.tool_acc)
         time.sleep(1)
         print("Robot is at home position.")
+    
     
 if __name__ == "__main__":
     robot = UR5_VGA10()

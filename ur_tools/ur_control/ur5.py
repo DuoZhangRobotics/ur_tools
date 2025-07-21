@@ -5,6 +5,7 @@ class UR5:
         self.ip = ip
         self.rtde_r, self.rtde_c = None, None
         self.home = None
+        self.ee2base = None
     
     def moveJ(self, pos, speed, acceleration):
         self.rtde_c.moveJ(pos, speed, acceleration)
@@ -60,4 +61,21 @@ class UR5:
             T: np.ndarray (4, 4) – transformation matrix from base to end-effector
         """
         ee_pose = self.get_ee_state()
-        return self.pose_to_matrix(ee_pose)
+        self.ee2base = self.pose_to_matrix(ee_pose)
+        return self.ee2base
+    
+    def cam2ee_to_ee2base(self, cam_ee_pose):
+        """
+        Convert camera end-effector pose to base end-effector pose.
+        Args:
+            cam_ee_pose: array-like (3,) – camera end-effector pose
+        Returns:
+            T: np.ndarray (4, 4) – transformation matrix from base to camera end-effector
+        """
+        homogeneous_cam_ee_pose = np.ones((4, 1))
+        homogeneous_cam_ee_pose[:3, 0] = cam_ee_pose
+        if self.ee2base is None:
+            raise ValueError("End-effector to base transformation matrix is not set. Call get_ee2base() first.")
+        
+        world_pose = self.ee2base @ homogeneous_cam_ee_pose
+        return world_pose[:3, 0]
