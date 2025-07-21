@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: ur_tools
+Version: 0.1.0
+Summary: UR5 robot calibration and control tools with RealSense cameras and Robotiq 2f 85 gripper and OnRobot VGA10 gripper
+Home-page: https://github.com/DuoZhangRobotics/RobotControl.git
+Author: Duo Zhang, Baichuan Huang, Kowndinya Boyalakuntla
+Classifier: Programming Language :: Python :: 3
+Description-Content-Type: text/markdown
+Requires-Dist: opencv-python
+Requires-Dist: numpy
+Requires-Dist: pyrealsense2
+Requires-Dist: scipy
+Requires-Dist: ur_rtde
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: summary
+
+# RobotControl
+
+In the script `rtde_control_vg.script', make sure to use channel 2 to include both channel A and B, or the suction power isn't enough. Channel 0 is A, channel 1 is B and channel 2 is both. Refer to the manual for more detailed instruction.

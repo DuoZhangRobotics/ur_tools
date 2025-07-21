@@ -1,5 +1,6 @@
 # Author: Baichuan Huang
 import time
+import os
 
 import numpy as np
 import cv2
@@ -8,13 +9,12 @@ from scipy.optimize import least_squares
 from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
-from utils import generate_6d_pose, calibrate_eye_hand, reprojection_error_eye_in_hand, get_board_pose
+from ur_control.utils import generate_6d_pose, calibrate_eye_hand, reprojection_error_eye_in_hand, get_board_pose
 
 from realsense_camera import Camera
 
 
-if __name__ == "__main__":
-
+def calibrate_eye_in_hand():
     # NOTE: make sure this is safe and correct ===============================
     tool_vel = 0.1
     tool_acc = 0.5
@@ -196,4 +196,9 @@ if __name__ == "__main__":
         print(f"Max Reprojection Error: {np.max(np.linalg.norm(reprojection_errors, axis=1)):.6f} m")
 
     print("Saving...")
-    np.savetxt("cam2ee_pose.txt", optimized_cam2ee_pose, delimiter=" ")
+    saving_path = os.path.join(os.path.dirname(__file__), "cam2ee_pose.txt")
+    np.savetxt(saving_path, optimized_cam2ee_pose, delimiter=" ")
+    return optimized_cam2ee_pose
+
+if __name__ == "__main__":
+    calibrate_eye_in_hand()

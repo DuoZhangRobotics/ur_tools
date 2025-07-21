@@ -14,7 +14,7 @@ import pybullet as pb
 from robotiq_gripper import RobotiqGripper
 from robotiq_gripper_control import RobotiqGripper as RobotiqGripperControl
 from scipy.spatial.transform import Rotation as R
-from utils import Colors
+from ur_control.utils import Colors
 from ur5 import UR5
 
 
