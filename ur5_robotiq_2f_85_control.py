@@ -115,18 +115,8 @@ def single_arm_test():
     robot = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.100", init_gripper=False)
     init_q = robot.get_joint_state()
     print("Initial joint state:\n", init_q)
-    print("Moving to initial position...")
-    home =[1.305213451385498, 
-                    -1.592827936212057, 
-                    1.6703251043902796, 
-                    -1.647313734094137, 
-                    -1.5624845663653772, 
-                    2.8789961338043213]
-    print(home)
-    init_q[5] = home[5]
-    robot.moveJ(init_q, 0.5, 0.5)
-    init_q = robot.get_joint_state()
-    print("Moved to:\n", init_q)
+    init_ee_pos = robot.get_ee_state()
+    print("Initial end-effector position:\n", init_ee_pos)
     exit()
     init_q[0]  += 0.1
     robot.moveJ(init_q, 0.5, 0.5)

@@ -8,7 +8,7 @@ from scipy.optimize import least_squares
 from rtde_control import RTDEControlInterface as RTDEControl
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
-from utils import *
+from utils import generate_6d_pose, calibrate_eye_hand, reprojection_error_eye_in_hand, get_board_pose
 
 from realsense_camera import Camera
 
@@ -23,14 +23,16 @@ if __name__ == "__main__":
     _ip = "172.17.139.100"
 
     aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
-    charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.035, 0.02625, aruco_dict_board) # 7x5 charuco board with 35mm square and 26.25mm marker
+    # charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.035, 0.02625, aruco_dict_board) # 7x5 charuco board with 35mm square and 26.25mm marker
+    charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.04, 0.03, aruco_dict_board) # 7x5 charuco board with 40mm square and 30mm marker
     if _ip == "172.17.139.100":
         joint_home = [1.305213451385498, 
                     -1.592827936212057, 
                     1.6703251043902796, 
                     -1.647313734094137, 
                     -1.5624845663653772, 
-                    2.8789961338043213]   # robot will go here before starting the calibration
+                    -0.17452842393984014
+                    ]   # robot will go here before starting the calibration
     elif _ip == "172.17.139.103":
         joint_home = [
             1.3088655471801758, 
@@ -44,13 +46,19 @@ if __name__ == "__main__":
         raise RuntimeError("Invalid IP address. Please check the IP address of the robot.")
 
     target = [0, -0.5, 0]               # rough position of the target (calibration board)
-    y_limits = [-0.5, -0.3]             # y limits for the end-effector
+    y_limits = [-0.6, -0.3]             # y limits for the end-effector
+    y_limits = [-0.5, -0.5]             # y limits for the end-effector
     x_limits = [-0.1, 0.1]              # x limits for the end-effector
+    x_limits = [-0.0, 0.0]              # x limits for the end-effector
     z_heights = [0.3, 0.35, 0.4]        # randomly pick z from this list
-    up_axis = [0, -1, 0]                # camera up axis when looking at the target
-    offset_rpy = [0, 0, np.pi/2]          # adjust the rpy of the camera to match the robot's coordinate system
-    randomness_up = 0.2                 # add randomness in the up axis
+    z_heights = [0.3]        # randomly pick z from this list
+    up_axis = [0, -1, 0]                # camera up axis when looking at the target #Duo: This does not mean the direction of the lens. 
+                                        # It literally means the up axis of a robot. If you put the camera on the table while the lens is facing you,
+                                        # the up axis now is [0, 0, 1]
+    offset_rpy = [0, np.pi, 0]          # adjust the rpy of the camera to match the robot's coordinate system
+    randomness_up = 0.0                 # add randomness in the up axis
     x_num, y_num = 5, 5                 # sample points for the end-effector wihin the limits
+    x_num, y_num = 1, 1                 # sample points for the end-effector wihin the limits
     initial_guess_cam2ee = None         # provide this if calibrateHandEye is not good
     # =========================================================================
 
@@ -62,7 +70,7 @@ if __name__ == "__main__":
 
     aruco_params = cv2.aruco.DetectorParameters()
     aruco_detector_board = cv2.aruco.ArucoDetector(aruco_dict_board, aruco_params)
-    
+
     # prepare ee configs
     x_values = np.linspace(x_limits[0], x_limits[1], x_num)
     y_values = np.linspace(y_limits[0], y_limits[1], y_num)
@@ -75,6 +83,7 @@ if __name__ == "__main__":
         random_up_axis = np.array(up_axis) + np.random.uniform(-randomness_up, randomness_up, 3)
         random_up_axis = random_up_axis / np.linalg.norm(random_up_axis)
         pose = generate_6d_pose([x, y, z_heights[z_i]], target, random_up_axis, offset_rpy)
+        print(f"pose = {pose}")
         calibration_ee_configs.append(pose)
 
     # Lists to store poses
@@ -86,6 +95,7 @@ if __name__ == "__main__":
     # Collect marker pos
     # input("\nCollecting marker pos...\nPress Enter to continue...")
     rtde_c.moveJ(joint_home, joint_vel, joint_acc)
+
     for i, ee_config in enumerate(calibration_ee_configs):
         rtde_c.moveL(ee_config, tool_vel, tool_acc)
         print(f"Moving to {ee_config}...")

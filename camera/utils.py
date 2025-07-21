@@ -97,7 +97,7 @@ def calibrate_eye_hand(R_gripper2base, t_gripper2base, R_target2cam, t_target2ca
     
     return results
 
-def get_board_pose(color_img, aruco_detector, charuco_board, camera_matrix, dist_coeffs, plot=False):
+def get_board_pose(color_img, aruco_detector:cv2.aruco.ArucoDetector, charuco_board, camera_matrix, dist_coeffs, plot=False):
     gray = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
     corners, ids, rejected_img_points = aruco_detector.detectMarkers(gray)
     number_markers = (charuco_board.getChessboardSize()[0] - 1) * (charuco_board.getChessboardSize()[1] - 1)
