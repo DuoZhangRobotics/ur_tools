@@ -84,9 +84,10 @@ class Camera:
                     break
             color_sensor = profile.get_device().first_color_sensor()
             color_sensor.set_option(rs.option.enable_auto_exposure, False)
-            color_sensor.set_option(rs.option.exposure, 200)
-            # color_sensor.set_option(rs.option.gain, 64)
-            color_sensor.set_option(rs.option.power_line_frequency, 2)
+            color_sensor.set_option(rs.option.exposure, 390)
+            color_sensor.set_option(rs.option.gain, 50)
+            color_sensor.set_option(rs.option.brightness, -50)
+            color_sensor.set_option(rs.option.gamma, 0)
         elif self.device_name == "Intel RealSense D435":
             preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
             for i in range(int(preset_range.max)):
