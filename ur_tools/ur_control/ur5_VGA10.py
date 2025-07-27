@@ -44,16 +44,16 @@ class UR5_VGA10(UR5):
         self.vg_cmd_out_reg = 19
         self.vg_threshold = 30
         self.home = [
-            1.305213451385498, 
-            -1.592827936212057, 
-            1.6703251043902796, 
-            -1.647313734094137, 
-            -1.5624845663653772, 
-            -0.17452842393984014
-            ]   # robot will go here before starting the calibration
+            1.3005071878433228, 
+            -1.49547432482753, 
+            1.0263403097735804, 
+            -1.1005623799613495, 
+            -1.5632150808917444, 
+            -0.27235728899110967
+            ]
 
         self.ee_home = [
-            0, -0.5, 0.3, 0, np.pi, 0
+            0, -0.5, 0.5, 0, -np.pi, 0
         ]
     
         # Use external UR cap, on the panel -> program, need to have
@@ -120,17 +120,20 @@ class UR5_VGA10(UR5):
     def go_home(self):
         print("Moving to home position...")
         # self.moveJ(self.home, self.joint_vel_slow, self.joint_acc_slow)
-        self.moveL(self.ee_home, self.tool_vel, self.tool_acc)
+        # self.moveL(self.ee_home, self.tool_vel, self.tool_acc)
+        self.moveL(self.ee_home, 0.1, 0.1)
         time.sleep(1)
         print("Robot is at home position.")
     
     
 if __name__ == "__main__":
     robot = UR5_VGA10()
+    robot.go_home()
     init_q = robot.get_joint_state()
     print("Initial joint state:", init_q)
     init_ee_position = robot.get_ee_state()
     print("Initial end-effector position:", init_ee_position)
+    exit()
     init_q[0]  += 0.1
     robot.moveJ(init_q, 0.5, 0.5)
     init_q[0]  -= 0.1

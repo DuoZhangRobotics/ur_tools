@@ -84,10 +84,6 @@ class Camera:
                     break
             color_sensor = profile.get_device().first_color_sensor()
             color_sensor.set_option(rs.option.enable_auto_exposure, False)
-            color_sensor.set_option(rs.option.exposure, 390)
-            color_sensor.set_option(rs.option.gain, 50)
-            color_sensor.set_option(rs.option.brightness, -50)
-            color_sensor.set_option(rs.option.gamma, 0)
         elif self.device_name == "Intel RealSense D435":
             preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
             for i in range(int(preset_range.max)):
@@ -98,10 +94,21 @@ class Camera:
                     depth_sensor.set_option(rs.option.visual_preset, i)
                     break
             color_sensor = profile.get_device().first_color_sensor()
-            color_sensor.set_option(rs.option.enable_auto_exposure, True)
-            color_sensor.set_option(rs.option.contrast, 100)
-            color_sensor.set_option(rs.option.exposure, 390.0)
-            color_sensor.set_option(rs.option.power_line_frequency, 2)
+            self.pipeline.stop() # You have to stop the pipeline before setting options
+            while True:
+                try:
+                    color_sensor.set_option(rs.option.enable_auto_exposure, True)
+                    color_sensor.set_option(rs.option.contrast, 100)
+                    color_sensor.set_option(rs.option.exposure, 390.0)
+                    # color_sensor.set_option(rs.option.power_line_frequency, 2)
+                    color_sensor.set_option(rs.option.gain, 50)
+                    color_sensor.set_option(rs.option.brightness, -30)
+                    color_sensor.set_option(rs.option.gamma, 100)
+                    break
+                except Exception as e:
+                    time.sleep(0.1)
+                    continue
+
         elif self.device_name == "Intel RealSense L515":
             # print("Setting visual preset to Short Range")
             # depth_sensor.set_option(rs.option.visual_preset, int(rs.l500_visual_preset.short_range))
@@ -144,11 +151,22 @@ class Camera:
         # preset_range = self.temporal.get_option_range(rs.option.filter_smooth_alpha)
         # print(preset_range, preset_range.min, preset_range.max, preset_range.step)
 
+        profile = self.pipeline.start(config) # restart it after setting options
+        # atexit.register(self.stop_streaming)
         # Give some time to be stable
         print("Give time for camera to warm up")
         start_time = time.time()
-        while time.time() - start_time < 0.1:
-            self.pipeline.wait_for_frames()
+        # while time.time() - start_time < 0.1:
+        for init_cnt in range(10):
+            try:
+                self.pipeline.wait_for_frames()
+                break
+            except Exception as e:
+                time.sleep(0.1)
+                if init_cnt == 9:
+                    print("Camera initialization failed after 10 attempts.")
+                    sys.exit(1)
+                continue
 
         if calibrated:
             self.cam2ee = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cam2ee_pose.txt'), delimiter=" ")

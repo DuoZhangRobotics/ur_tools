@@ -1,4 +1,5 @@
 import numpy as np
+from ur_tools.camera.utils import generate_6d_pose
 
 class UR5:
     def __init__(self, ip):
@@ -21,7 +22,24 @@ class UR5:
 
     def get_ee_state(self):
         return self.rtde_r.getActualTCPPose()
-    
+
+    def randomize_ee_pose(self, x_limits, y_limits, z_heights, x_num, y_num, randomness_up, target):
+        x_values = np.linspace(x_limits[0], x_limits[1], x_num)
+        y_values = np.linspace(y_limits[0], y_limits[1], y_num)
+        up_axis = [0, -1, 0]
+        offset_rpy = [0, np.pi, 0]  # Roll, Pitch, Yaw offsets
+        x_grid, y_grid = np.meshgrid(x_values, y_values)
+        poses = []
+        for x, y in zip(x_grid.flatten(), y_grid.flatten()):
+            # select z randomly, and rpy randomly
+            z_i = np.random.randint(0, len(z_heights))
+            # add random noise to up_axis
+            random_up_axis = np.array(up_axis) + np.random.uniform(-randomness_up, randomness_up, 3)
+            random_up_axis = random_up_axis / np.linalg.norm(random_up_axis)
+            pose = generate_6d_pose([x, y, z_heights[z_i]], target, random_up_axis, offset_rpy)
+            poses.append(pose)
+        return poses
+
     @staticmethod
     def rodrigues_rotation_matrix(rvec):
         theta = np.linalg.norm(rvec)
