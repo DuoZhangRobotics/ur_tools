@@ -53,7 +53,7 @@ class UR5_VGA10(UR5):
             ]
 
         self.ee_home = [
-            0, -0.5, 0.5, 0, -np.pi, 0
+            0, -0.5, 0.4, 0, -np.pi, 0
         ]
     
         # Use external UR cap, on the panel -> program, need to have
