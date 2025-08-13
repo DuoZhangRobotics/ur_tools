@@ -23,12 +23,13 @@ from ur_tools.camera.utils import *
 class Camera:
     """Customized realsense camera"""
 
-    def __init__(self, calibrated=True):
+    def __init__(self, calibrated=True, on_hand=True):
         aruco_params = cv2.aruco.DetectorParameters()
         aruco_dict_arm = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
         aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
         self.aruco_detector_board = cv2.aruco.ArucoDetector(aruco_dict_board, aruco_params)
         self.aruco_detector_arm = cv2.aruco.ArucoDetector(aruco_dict_arm, aruco_params)
+        self.on_hand = on_hand
 
         # Create a pipeline
         self.pipeline = rs.pipeline()
@@ -83,7 +84,20 @@ class Camera:
                     # depth_sensor.set_option(rs.option.visual_preset, i)
                     break
             color_sensor = profile.get_device().first_color_sensor()
-            color_sensor.set_option(rs.option.enable_auto_exposure, False)
+            self.pipeline.stop() # You have to stop the pipeline before setting options
+            while True:
+                try:
+                    color_sensor.set_option(rs.option.enable_auto_exposure, True)
+                    color_sensor.set_option(rs.option.contrast, 100)
+                    color_sensor.set_option(rs.option.exposure, 390.0)
+                    # color_sensor.set_option(rs.option.power_line_frequency, 2)
+                    color_sensor.set_option(rs.option.gain, 50)
+                    color_sensor.set_option(rs.option.brightness, -30)
+                    color_sensor.set_option(rs.option.gamma, 100)
+                    break
+                except Exception as e:
+                    time.sleep(0.1)
+                    continue
         elif self.device_name == "Intel RealSense D435":
             preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
             for i in range(int(preset_range.max)):
@@ -169,9 +183,18 @@ class Camera:
                 continue
 
         if calibrated:
-            self.cam2ee = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cam2ee_pose.txt'), delimiter=" ")
-            self.cam2ee_inv = np.linalg.inv(self.cam2ee)
-            print("Reading camera pose from file\n", self.cam2ee)
+            '''
+                cam2robot is cam2ee if camera is eye in hand
+                cam2robot is cam2base if camera is eye to hand 
+            '''
+            if self.on_hand:
+                self.cam2robot = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cam2ee_pose.txt'), delimiter=" ")
+                self.cam2robot_inv = np.linalg.inv(self.cam2robot)
+                print("Reading camera pose from file\n", self.cam2robot)
+            else:
+                self.cam2robot = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cam2base_pose.txt'), delimiter=" ")
+                self.cam2robot_inv = np.linalg.inv(self.cam2robot)
+                print("Reading camera pose from file\n", self.cam2robot)
         self.configs = [{
             "image_size": (color_profile.height(), color_profile.width()),
             "intrinsics": self.intrinsics,
@@ -492,8 +515,8 @@ class Camera:
 
     def pose_in_robot_to_image(self, poses_in_robot):
         """Convert 3D points in robot coordinate to 2D points in image coordinate"""
-        rvec = cv2.Rodrigues(self.cam2ee_inv[:3, :3])[0]
-        tvec = self.cam2ee_inv[:3, 3]
+        rvec = cv2.Rodrigues(self.cam2robot_inv[:3, :3])[0]
+        tvec = self.cam2robot_inv[:3, 3]
         projected_points, _ = cv2.projectPoints(poses_in_robot, rvec, tvec, self.intrinsics, self.distortion_coeffs)
         return projected_points
 
@@ -502,7 +525,7 @@ class Camera:
         Args: xyz_in_camera: 3D point in camera coordinate
         """
         homogeneous_points = np.hstack((points_in_camera, np.ones((len(points_in_camera), 1))))
-        homogeneous_points_world = np.dot(self.cam2ee, homogeneous_points.T).T
+        homogeneous_points_world = np.dot(self.cam2robot, homogeneous_points.T).T
 
         return homogeneous_points_world[:, :3]
 
@@ -525,7 +548,7 @@ class Camera:
         scaled_points_homogeneous = np.column_stack((scaled_points, np.ones(len(scaled_points))))
 
         # Transform to robot coordinates
-        world_points = (self.cam2ee @ scaled_points_homogeneous.T).T
+        world_points = (self.cam2robot @ scaled_points_homogeneous.T).T
 
         return world_points[:, :3]
 

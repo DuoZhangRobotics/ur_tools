@@ -12,7 +12,7 @@ from ur_tools.ur_control.ur5 import UR5
 
 class UR5_VGA10(UR5):
     def __init__(self):
-        _ip = "172.17.139.100"
+        _ip = "172.17.139.103"
         super().__init__(_ip)
         self.rtde_frequency = 100.0
         self.joint_acc = 0.4
@@ -65,8 +65,9 @@ class UR5_VGA10(UR5):
 
         self.rtde_i.setInputIntRegister(self.vg_cmd_in_reg, 0)
         # self.go_take_photo()
-        self.vg_grip(0.5)
-        self.vg_release(0.5)
+        self.vg_grip(1.0)
+        time.sleep(0.5)
+        self.vg_release(1.0)
 
 
     def camera_ee2base(self, camera_ee_pose):

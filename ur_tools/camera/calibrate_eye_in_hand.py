@@ -14,36 +14,29 @@ from ur_tools.camera.utils import generate_6d_pose, calibrate_eye_hand, reprojec
 from ur_tools.camera.realsense_camera import Camera
 
 
-def calibrate_eye_in_hand():
+def calibrate_eye_in_hand(ip_address="172.17.139.103"):
     # NOTE: make sure this is safe and correct ===============================
     tool_vel = 0.1
     tool_acc = 0.5
     joint_vel = 0.5
     joint_acc = 0.5
-    _ip = "172.17.139.100"
+    if ip_address not in [
+        "172.17.139.100",
+        "172.17.139.103"
+    ]:
+        raise RuntimeError("Invalid IP address. Please check the IP address of the robot.")
 
+    _ip = ip_address
     aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
     # charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.035, 0.02625, aruco_dict_board) # 7x5 charuco board with 35mm square and 26.25mm marker
     charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.04, 0.03, aruco_dict_board) # 7x5 charuco board with 40mm square and 30mm marker
-    if _ip == "172.17.139.100":
-        joint_home = [1.305213451385498, 
-                    -1.592827936212057, 
-                    1.6703251043902796, 
-                    -1.647313734094137, 
-                    -1.5624845663653772, 
-                    -0.17452842393984014
-                    ]   # robot will go here before starting the calibration
-    elif _ip == "172.17.139.103":
-        joint_home = [
-            1.3088655471801758, 
-            -1.559130892423429, 
-            1.6379039923297327, 
-            -1.6532632313170375, 
-            -1.5686739126788538, 
-            -1.7453292519943295
-        ]
-    else:
-        raise RuntimeError("Invalid IP address. Please check the IP address of the robot.")
+    joint_home = [1.305213451385498, 
+                -1.592827936212057, 
+                1.6703251043902796, 
+                -1.647313734094137, 
+                -1.5624845663653772, 
+                -0.17452842393984014
+                ]   # robot will go here before starting the calibration
 
     target = [0, -0.5, 0]               # rough position of the target (calibration board)
     y_limits = [-0.6, -0.3]             # y limits for the end-effector
@@ -54,7 +47,7 @@ def calibrate_eye_in_hand():
                                         # the up axis now is [0, 0, 1]
     offset_rpy = [0, np.pi, 0]          # adjust the rpy of the camera to match the robot's coordinate system
     randomness_up = 0.2                 # add randomness in the up axis
-    x_num, y_num = 5, 5                 # sample points for the end-effector wihin the limits
+    x_num, y_num = 4, 4                 # sample points for the end-effector wihin the limits
     initial_guess_cam2ee = None         # provide this if calibrateHandEye is not good
     # =========================================================================
 

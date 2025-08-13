@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from ur_tools.camera.utils import generate_6d_pose
 
 class UR5:
@@ -10,9 +11,11 @@ class UR5:
     
     def moveJ(self, pos, speed, acceleration):
         self.rtde_c.moveJ(pos, speed, acceleration)
+        time.sleep(0.5)
     
     def moveL(self, pos, speed, acceleration):
         self.rtde_c.moveL(pos, speed, acceleration)
+        time.sleep(0.5)
 
     def servoJ(self, pos, speed, acceleration, look_ahead, gain):
         self.rtde_c.servoJ(pos, speed, acceleration, self.dt, look_ahead, gain)
