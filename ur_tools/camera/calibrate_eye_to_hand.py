@@ -14,7 +14,7 @@ from ur_tools.camera.utils import *
 from ur_tools.camera.realsense_camera import Camera
 
 
-def calibrate_eye_to_hand(ip_address="172.17.139.103"):
+def calibrate_eye_to_hand(ip_address="172.17.139.103", camera=None, write_pose_to_file:bool=True, x_num=5, y_num=5):
     # NOTE: make sure this is safe and correct ===============================
     tool_vel = 0.1
     tool_acc = 0.5
@@ -50,12 +50,12 @@ def calibrate_eye_to_hand(ip_address="172.17.139.103"):
            [1.56, 0.2, -0.2],
            [1.76, 0, 0],
            [1.36, 0, 0]]                # randomly pick rpy from this list
-    x_num, y_num = 5, 5                 # sample points for the end-effector wihin the limits
     initial_guess_cam2base = None       # provide this if calibrateHandEye is not good
     
     # =========================================================================
 
-    camera = Camera(calibrated=False, on_hand=False)
+    if camera is None:
+        camera = Camera(calibrated=False, on_hand=False)
 
     # Connect robot
     rtde_c = RTDEControl(_ip)
@@ -191,10 +191,17 @@ def calibrate_eye_to_hand(ip_address="172.17.139.103"):
         print(f"Mean Reprojection Error: {np.mean(np.linalg.norm(reprojection_errors, axis=1)):.6f} m")
         print(f"Max Reprojection Error: {np.max(np.linalg.norm(reprojection_errors, axis=1)):.6f} m")
 
-    print("Saving...")
-    saving_path = os.path.join(os.path.dirname(__file__), "marker2ee_pose.txt")
-    np.savetxt(saving_path, optimized_marker2ee_params, delimiter=" ")
-    return optimized_marker2ee_params
+    camera_rotation = cv2.Rodrigues(optimized_camera_pose_params[:3])[0]
+    camera_translation = optimized_camera_pose_params[3:]
+    camera_pose = np.eye(4)
+    camera_pose[:3, :3] = camera_rotation
+    camera_pose[:3, 3] = camera_translation
+
+    if write_pose_to_file:
+        print("Saving...")
+        saving_path = os.path.join(os.path.dirname(__file__), "cam2base_pose.txt")
+        np.savetxt(saving_path, camera_pose, delimiter=" ")
+    return camera_pose 
 
 if __name__ == "__main__":
     ip = "172.17.139.100"
