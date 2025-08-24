@@ -11,11 +11,11 @@ import time
 from pybullet_utils import bullet_client
 import pybullet_data
 import pybullet as pb
-from robotiq_gripper import RobotiqGripper
-from robotiq_gripper_control import RobotiqGripper as RobotiqGripperControl
+from ur_tools.ur_control.robotiq_gripper import RobotiqGripper
+from ur_tools.ur_control.robotiq_gripper_control import RobotiqGripper as RobotiqGripperControl
 from scipy.spatial.transform import Rotation as R
-from ur_control.utils import Colors
-from ur5 import UR5
+from ur_tools.ur_control.utils import Colors
+from ur_tools.ur_control.ur5 import UR5
 
 
 class UR_Robotiq_2f_85_Controller(UR5):
@@ -112,16 +112,18 @@ class UR_Robotiq_2f_85_Controller(UR5):
 
 def single_arm_test():
     dt = 0.002
-    robot = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.100", init_gripper=False)
+    robot = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.103", init_gripper=True)
     init_q = robot.get_joint_state()
     print("Initial joint state:\n", init_q)
     init_ee_pos = robot.get_ee_state()
     print("Initial end-effector position:\n", init_ee_pos)
-    exit()
-    init_q[0]  += 0.1
+    robot.close_gripper()
+    robot.open_gripper()
+
+    init_q[0] = 1.57 
     robot.moveJ(init_q, 0.5, 0.5)
-    init_q[0]  -= 0.1
-    robot.moveJ(init_q, 0.5, 0.5)
+    # init_q[0]  -= 0.1
+    # robot.moveJ(init_q, 0.5, 0.5)
     # controller0.close_gripper()
     # controller0.open_gripper()
 
