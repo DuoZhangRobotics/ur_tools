@@ -112,7 +112,7 @@ class UR_Robotiq_2f_85_Controller(UR5):
 
 def single_arm_test():
     dt = 0.002
-    robot = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.103", init_gripper=True)
+    robot = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.100", init_gripper=True)
     init_q = robot.get_joint_state()
     print("Initial joint state:\n", init_q)
     init_ee_pos = robot.get_ee_state()
@@ -120,10 +120,11 @@ def single_arm_test():
     robot.close_gripper()
     robot.open_gripper()
 
-    init_q[0] = 1.57 
-    robot.moveJ(init_q, 0.5, 0.5)
-    # init_q[0]  -= 0.1
-    # robot.moveJ(init_q, 0.5, 0.5)
+    for i in range(3):
+        init_q[0] += 0.1
+        robot.moveJ(init_q, 0.5, 0.5, sleep=0.1)
+        init_q[0] -= 0.1
+        robot.moveJ(init_q, 0.5, 0.5, sleep=0.1)
     # controller0.close_gripper()
     # controller0.open_gripper()
 

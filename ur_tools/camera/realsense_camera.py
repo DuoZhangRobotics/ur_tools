@@ -87,7 +87,7 @@ class Camera:
             self.pipeline.stop() # You have to stop the pipeline before setting options
             while True:
                 try:
-                    color_sensor.set_option(rs.option.enable_auto_exposure, True)
+                    color_sensor.set_option(rs.option.enable_auto_exposure, False)
                     color_sensor.set_option(rs.option.contrast, 100)
                     color_sensor.set_option(rs.option.exposure, 390.0)
                     # color_sensor.set_option(rs.option.power_line_frequency, 2)

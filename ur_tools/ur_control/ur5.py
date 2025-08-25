@@ -9,9 +9,11 @@ class UR5:
         self.home = None
         self.ee2base = None
     
-    def moveJ(self, pos, speed, acceleration):
+    def moveJ(self, pos, speed, acceleration, sleep=0):
+        # self.rtde_c.moveJ(pos, speed, acceleration, asynchronous=False)
         self.rtde_c.moveJ(pos, speed, acceleration)
-        time.sleep(0.5)
+        if sleep > 0:
+            time.sleep(sleep)
     
     def moveL(self, pos, speed, acceleration):
         self.rtde_c.moveL(pos, speed, acceleration)
