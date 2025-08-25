@@ -54,7 +54,7 @@ class DualArm:
         interpolate = lambda v1, v2, t: (1 - t) * v1 + t * v2
         init_q = self.get_joint_states()
         start = [plan[0][0][0], plan[0][1][0]]
-        for i in np.linspace(0, 1, 1000):
+        for i in np.linspace(0, 1, 100):
             self.arm1.servoJ(interpolate(np.array(init_q[0]), np.array(start[0]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=0.03, gain=1000)
             self.arm2.servoJ(interpolate(np.array(init_q[1]), np.array(start[1]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=0.03, gain=1000)
             time.sleep(self.arm1.dt)
@@ -63,7 +63,7 @@ class DualArm:
         print('Robot moved to start position, ready to execute the plan')
 
     def execute(self, recorded_plan):
-        # self.move_to_start(recorded_plan)
+        self.move_to_start(recorded_plan)
         input("Press Enter to start execution...")
         last_position = None
         for section in recorded_plan:
@@ -72,8 +72,7 @@ class DualArm:
             else:
                 self.sanity_check(section, last_position)
                 last_position = [section[0][-1], section[1][-1]]
-                time.sleep(1.0)
-                # self.servoJ(section)
+                self.servoJ(section)
     
     def sanity_check(self, plan, last_position=None):
         # check if one section of plan has too large deviation
@@ -114,14 +113,15 @@ class DualArm:
             print(f"arm2: {pos2}")
             # self.arm1.moveJ(pos=pos1, speed=self.speed, acceleration=self.acceleration, sleep=0.0)
             # self.arm2.moveJ(pos=pos2, speed=self.speed, acceleration=self.acceleration, sleep=0.0)
-            self.moveJ([pos1, pos2])
-            time.sleep(0.5)
-            # for j in range(10000):
-            #     # self.arm1.servoJ(pos=interpolate(plan[0][i], plan[0][i+1], j/10000), look_ahead=0.03, gain=100, speed=self.speed, acceleration=self.acceleration)
-            #     # self.arm2.servoJ(pos=interpolate(plan[1][i], plan[1][i+1], j/10000), look_ahead=0.03, gain=100, speed=self.speed, acceleration=self.acceleration)
-            #     pos1 = interpolate(plan[0][i], plan[0][i+1], j/10000)
-            #     pos2 = interpolate(plan[1][i], plan[1][i+1], j/10000)
-            # time.sleep(self.dt)
+            # self.moveJ([pos1, pos2])
+            # time.sleep(0.5)
+            interpolation_num = 10
+            for j in range(interpolation_num):
+                self.arm1.servoJ(pos=interpolate(plan[0][i], plan[0][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
+                self.arm2.servoJ(pos=interpolate(plan[1][i], plan[1][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
+                # pos1 = interpolate(plan[0][i], plan[0][i+1], j/10000)
+                # pos2 = interpolate(plan[1][i], plan[1][i+1], j/10000)
+                time.sleep(self.dt)
 
     def get_joint_states(self):
         arm1_joint_states = self.arm1.get_joint_state()
