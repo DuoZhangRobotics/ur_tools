@@ -28,10 +28,10 @@ def calibrate_eye_to_hand(ip_address="172.17.139.103", camera=None, write_pose_t
 
     _ip = ip_address
 
-    # aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_1000)
-    # charuco_board = cv2.aruco.CharucoBoard((4, 4), 0.025, 0.01875, aruco_dict_board) # 4x4 charuco board with 30mm square and 22.5mm marker
-    aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
-    charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.04, 0.03, aruco_dict_board) # 7x5 charuco board with 40mm square and 30mm marker
+    aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_1000)
+    charuco_board = cv2.aruco.CharucoBoard((4, 4), 0.025, 0.01875, aruco_dict_board) # 4x4 charuco board with 30mm square and 22.5mm marker
+    # aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
+    # charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.04, 0.03, aruco_dict_board) # 7x5 charuco board with 40mm square and 30mm marker
     charuco_board.setLegacyPattern(True)  # the board use the old pattern, remove this if the board is created with the new pattern
     joint_home = [1.1242085695266724, 
                   -1.2143486899188538, 

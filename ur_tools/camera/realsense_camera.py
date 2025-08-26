@@ -50,6 +50,9 @@ class Camera:
         elif self.device_name == "Intel RealSense D435":
             config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
             config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+        elif self.device_name == "Intel RealSense D415":
+            config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+            config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
         elif self.device_name == "Intel RealSense L515":
             config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
             config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
@@ -99,6 +102,31 @@ class Camera:
                     time.sleep(0.1)
                     continue
         elif self.device_name == "Intel RealSense D435":
+            preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
+            for i in range(int(preset_range.max)):
+                visulpreset = depth_sensor.get_option_value_description(rs.option.visual_preset, i)
+                print(f"Visual preset {i}: {visulpreset}")
+                if visulpreset == "Default":
+                    print("Setting visual preset to Default")
+                    depth_sensor.set_option(rs.option.visual_preset, i)
+                    break
+            color_sensor = profile.get_device().first_color_sensor()
+            self.pipeline.stop() # You have to stop the pipeline before setting options
+            while True:
+                try:
+                    color_sensor.set_option(rs.option.enable_auto_exposure, True)
+                    color_sensor.set_option(rs.option.contrast, 100)
+                    color_sensor.set_option(rs.option.exposure, 390.0)
+                    # color_sensor.set_option(rs.option.power_line_frequency, 2)
+                    color_sensor.set_option(rs.option.gain, 50)
+                    color_sensor.set_option(rs.option.brightness, -30)
+                    color_sensor.set_option(rs.option.gamma, 100)
+                    break
+                except Exception as e:
+                    time.sleep(0.1)
+                    continue
+
+        elif self.device_name == "Intel RealSense D415":
             preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
             for i in range(int(preset_range.max)):
                 visulpreset = depth_sensor.get_option_value_description(rs.option.visual_preset, i)
@@ -226,6 +254,11 @@ class Camera:
                 frames = self.temporal.process(frames).as_frameset()
                 frames = self.disparity_to_depth.process(frames).as_frameset()
             elif self.device_name == "Intel RealSense D435":
+                frames = self.decimation.process(frames).as_frameset()
+                frames = self.depth_to_disparity.process(frames).as_frameset()
+                frames = self.temporal.process(frames).as_frameset()
+                frames = self.disparity_to_depth.process(frames).as_frameset()
+            elif self.device_name == "Intel RealSense D415":
                 frames = self.decimation.process(frames).as_frameset()
                 frames = self.depth_to_disparity.process(frames).as_frameset()
                 frames = self.temporal.process(frames).as_frameset()

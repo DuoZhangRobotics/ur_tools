@@ -65,6 +65,7 @@ class DualArm:
     def execute(self, recorded_plan):
         self.move_to_start(recorded_plan)
         input("Press Enter to start execution...")
+        time.sleep(10)
         last_position = None
         for section in recorded_plan:
             if type(section[0]) == str:
@@ -104,7 +105,7 @@ class DualArm:
         time.sleep(self.dt)
         
     
-    def servoJ(self, plan:List):
+    def servoJ(self, plan:List, interpolation_num:int=0):
         interpolate = lambda v1, v2, t: (1 - t) * v1 + t * v2
         for i in range(len(plan[0])-1):
             pos1 = plan[0][i]
@@ -115,12 +116,14 @@ class DualArm:
             # self.arm2.moveJ(pos=pos2, speed=self.speed, acceleration=self.acceleration, sleep=0.0)
             # self.moveJ([pos1, pos2])
             # time.sleep(0.5)
-            interpolation_num = 10
-            for j in range(interpolation_num):
-                self.arm1.servoJ(pos=interpolate(plan[0][i], plan[0][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
-                self.arm2.servoJ(pos=interpolate(plan[1][i], plan[1][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
-                # pos1 = interpolate(plan[0][i], plan[0][i+1], j/10000)
-                # pos2 = interpolate(plan[1][i], plan[1][i+1], j/10000)
+            if interpolation_num > 0:
+                for j in range(interpolation_num):
+                    self.arm1.servoJ(pos=interpolate(plan[0][i], plan[0][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
+                    self.arm2.servoJ(pos=interpolate(plan[1][i], plan[1][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
+                    time.sleep(self.dt)
+            else:
+                self.arm1.servoJ(pos=plan[0][i], look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
+                self.arm2.servoJ(pos=plan[1][i], look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
                 time.sleep(self.dt)
 
     def get_joint_states(self):
