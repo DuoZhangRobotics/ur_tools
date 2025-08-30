@@ -37,6 +37,12 @@ class DualArm:
         self.arm1.open_gripper()
         self.arm2.close_gripper()
         self.arm2.open_gripper()
+        self.look_ahead = 0.1
+        self.gain = 1000
+        self.home = [
+            [1.5708118677139282, -2.2, 1.9, -1.383, -1.5700505415545862, 0],
+            [1.5708118677139282, -2.2, 1.9, -1.383, -1.5700505415545862, 0]
+        ]
 
     def gripper_control(self, action1, action2):
         if action1 == "CLOSE":
@@ -49,20 +55,32 @@ class DualArm:
         elif action2 == "OPEN":
             self.arm2.open_gripper()
         time.sleep(0.5)
+    
+    def go_home(self):
+        init_q = self.get_joint_states()
+        interpolate = lambda v1, v2, t: (1 - t) * v1 + t * v2
+        for i in np.linspace(0, 1, 100):
+            self.arm1.servoJ(interpolate(np.array(init_q[0]), np.array(self.home[0]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=self.look_ahead, gain=self.gain)
+            self.arm2.servoJ(interpolate(np.array(init_q[1]), np.array(self.home[1]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=self.look_ahead, gain=self.gain)
+            time.sleep(self.arm1.dt)
+            if np.linalg.norm(np.array(self.arm1.get_joint_state()) - self.home[0]) < 1e-3 and np.linalg.norm(np.array(self.arm2.get_joint_state()) - self.home[1]) < 1e-3:
+                break
+        print('Robot moved to home position')
 
     def move_to_start(self, plan):
         interpolate = lambda v1, v2, t: (1 - t) * v1 + t * v2
         init_q = self.get_joint_states()
         start = [plan[0][0][0], plan[0][1][0]]
         for i in np.linspace(0, 1, 100):
-            self.arm1.servoJ(interpolate(np.array(init_q[0]), np.array(start[0]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=0.03, gain=1000)
-            self.arm2.servoJ(interpolate(np.array(init_q[1]), np.array(start[1]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=0.03, gain=1000)
+            self.arm1.servoJ(interpolate(np.array(init_q[0]), np.array(start[0]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=self.look_ahead, gain=self.gain)
+            self.arm2.servoJ(interpolate(np.array(init_q[1]), np.array(start[1]), i), speed=self.speed, acceleration=self.acceleration, look_ahead=self.look_ahead, gain=self.gain)
             time.sleep(self.arm1.dt)
             if np.linalg.norm(np.array(self.arm1.get_joint_state()) - start) < 1e-3 and np.linalg.norm(np.array(self.arm2.get_joint_state()) - start) < 1e-3:
                 break
         print('Robot moved to start position, ready to execute the plan')
 
-    def execute(self, recorded_plan):
+    def execute(self, recorded_plan, interpolation_num=5):
+        self.go_home()
         self.move_to_start(recorded_plan)
         input("Press Enter to start execution...")
         time.sleep(10)
@@ -73,7 +91,7 @@ class DualArm:
             else:
                 self.sanity_check(section, last_position)
                 last_position = [section[0][-1], section[1][-1]]
-                self.servoJ(section)
+                self.servoJ(section, interpolation_num=interpolation_num)
     
     def sanity_check(self, plan, last_position=None):
         # check if one section of plan has too large deviation
@@ -118,12 +136,12 @@ class DualArm:
             # time.sleep(0.5)
             if interpolation_num > 0:
                 for j in range(interpolation_num):
-                    self.arm1.servoJ(pos=interpolate(plan[0][i], plan[0][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
-                    self.arm2.servoJ(pos=interpolate(plan[1][i], plan[1][i+1], j/interpolation_num), look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
+                    self.arm1.servoJ(pos=interpolate(plan[0][i], plan[0][i+1], j/interpolation_num), look_ahead=self.look_ahead, gain=self.gain, speed=self.speed, acceleration=self.acceleration)
+                    self.arm2.servoJ(pos=interpolate(plan[1][i], plan[1][i+1], j/interpolation_num), look_ahead=self.look_ahead, gain=self.gain, speed=self.speed, acceleration=self.acceleration)
                     time.sleep(self.dt)
             else:
-                self.arm1.servoJ(pos=plan[0][i], look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
-                self.arm2.servoJ(pos=plan[1][i], look_ahead=0.03, gain=1000, speed=self.speed, acceleration=self.acceleration)
+                self.arm1.servoJ(pos=plan[0][i], look_ahead=self.look_ahead, gain=self.gain, speed=self.speed, acceleration=self.acceleration)
+                self.arm2.servoJ(pos=plan[1][i], look_ahead=self.look_ahead, gain=self.gain, speed=self.speed, acceleration=self.acceleration)
                 time.sleep(self.dt)
 
     def get_joint_states(self):
@@ -132,20 +150,20 @@ class DualArm:
         return [arm1_joint_states, arm2_joint_states]
 
 if __name__ == "__main__":
-    # calibrate_arm2()
-    arm1 = UR_Robotiq_2f_85_Controller(robot_ip="172.17.139.100", init_gripper=True, dt=0.02)
-    arm2 = UR_Robotiq_2f_85_Controller(robot_ip="172.17.139.103", init_gripper=True, dt=0.02)
-    dual_arm = DualArm(arm1, arm2)
-    init_q = dual_arm.get_joint_states()
-    print("Initial joint states:")
-    print(init_q)
-    for i in range(5):
-        init_q[0][0] += 0.1
-        init_q[1][0] += 0.1
-        dual_arm.moveJ(init_q)
-        init_q[0][0] -= 0.1
-        init_q[1][0] -= 0.1
-        dual_arm.moveJ(init_q)
+    calibrate_arm2()
+    # arm1 = UR_Robotiq_2f_85_Controller(robot_ip="172.17.139.100", init_gripper=True, dt=0.02)
+    # arm2 = UR_Robotiq_2f_85_Controller(robot_ip="172.17.139.103", init_gripper=True, dt=0.02)
+    # dual_arm = DualArm(arm1, arm2)
+    # init_q = dual_arm.get_joint_states()
+    # print("Initial joint states:")
+    # print(init_q)
+    # for i in range(5):
+    #     init_q[0][0] += 0.1
+    #     init_q[1][0] += 0.1
+    #     dual_arm.moveJ(init_q)
+    #     init_q[0][0] -= 0.1
+    #     init_q[1][0] -= 0.1
+    #     dual_arm.moveJ(init_q)
 
 
 

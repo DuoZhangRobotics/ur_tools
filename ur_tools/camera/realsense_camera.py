@@ -614,5 +614,5 @@ class Camera:
 
 
 if __name__ == "__main__":
-    camera = Camera()
+    camera = Camera(calibrated=True, on_hand=False)
     camera.show_video_realtime()

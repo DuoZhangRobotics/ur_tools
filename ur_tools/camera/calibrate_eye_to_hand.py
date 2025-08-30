@@ -28,10 +28,10 @@ def calibrate_eye_to_hand(ip_address="172.17.139.103", camera=None, write_pose_t
 
     _ip = ip_address
 
-    aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_1000)
-    charuco_board = cv2.aruco.CharucoBoard((4, 4), 0.025, 0.01875, aruco_dict_board) # 4x4 charuco board with 30mm square and 22.5mm marker
-    # aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
-    # charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.04, 0.03, aruco_dict_board) # 7x5 charuco board with 40mm square and 30mm marker
+    # aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_1000)
+    # charuco_board = cv2.aruco.CharucoBoard((4, 4), 0.025, 0.01875, aruco_dict_board) # 4x4 charuco board with 30mm square and 22.5mm marker
+    aruco_dict_board = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
+    charuco_board = cv2.aruco.CharucoBoard((7, 5), 0.04, 0.03, aruco_dict_board) # 7x5 charuco board with 40mm square and 30mm marker
     charuco_board.setLegacyPattern(True)  # the board use the old pattern, remove this if the board is created with the new pattern
     joint_home = [1.1242085695266724, 
                   -1.2143486899188538, 
@@ -40,9 +40,9 @@ def calibrate_eye_to_hand(ip_address="172.17.139.103", camera=None, write_pose_t
                   1.1332809925079346, 
                   0]                    # robot will go here before starting the calibration
     
-    y_limits = [-0.5, -0.6]             # y limits for the end-effector
-    x_limits = [-0.2, 0.2]              # x limits for the end-effector
-    z_heights = [0.08, 0.12, 0.18]      # randomly pick z from this list
+    y_limits = [-0.5, -0.7]             # y limits for the end-effector
+    x_limits = [-0.05, 0.05]              # x limits for the end-effector
+    z_heights = [0.15, 0.2, 0.25]      # randomly pick z from this list
     rpy = [[1.57, 0, 0],
            [1.56, 0.2, 0.2],
            [1.56, -0.2, -0.2],
@@ -70,11 +70,12 @@ def calibrate_eye_to_hand(ip_address="172.17.139.103", camera=None, write_pose_t
     y_values = np.linspace(y_limits[0], y_limits[1], y_num)
     x_grid, y_grid = np.meshgrid(x_values, y_values)
     # have the base layer to use the same z and rpy
-    calibration_ee_configs = [[x, y, z_heights[0]] + rpy[0] for x, y in zip(x_grid.flatten(), y_grid.flatten())]
+    # calibration_ee_configs = [[x, y, z_heights[0]] + rpy[0] for x, y in zip(x_grid.flatten(), y_grid.flatten())]
+    calibration_ee_configs = []
     for x, y in zip(x_grid.flatten(), y_grid.flatten()):
         # select z randomly, and rpy randomly
-        z_i = np.random.randint(1, len(z_heights))
-        rpy_i = np.random.randint(1, len(rpy))
+        z_i = np.random.randint(0, len(z_heights))
+        rpy_i = np.random.randint(0, len(rpy))
         calibration_ee_configs.append([x, y, z_heights[z_i]] + rpy[rpy_i])
     
     # rand_indx = np.random.choice(len(calibration_ee_configs), 6, replace=False)

@@ -1,21 +1,21 @@
+from ur_tools.ur_control.ur5 import UR5
+from ur_tools.ur_control.utils import Colors
+from scipy.spatial.transform import Rotation as R
+from ur_tools.ur_control.robotiq_gripper_control import RobotiqGripper as RobotiqGripperControl
+from ur_tools.ur_control.robotiq_gripper import RobotiqGripper
+import pybullet as pb
+import pybullet_data
+from pybullet_utils import bullet_client
+import time
+import pandas as pd
+import numpy as np
+import rtde_receive
+import rtde_control
 import sys
 import os
 
 root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, root_path)
-import rtde_control
-import rtde_receive
-import numpy as np
-import pandas as pd
-import time
-from pybullet_utils import bullet_client
-import pybullet_data
-import pybullet as pb
-from ur_tools.ur_control.robotiq_gripper import RobotiqGripper
-from ur_tools.ur_control.robotiq_gripper_control import RobotiqGripper as RobotiqGripperControl
-from scipy.spatial.transform import Rotation as R
-from ur_tools.ur_control.utils import Colors
-from ur_tools.ur_control.ur5 import UR5
 
 
 class UR_Robotiq_2f_85_Controller(UR5):
@@ -84,12 +84,24 @@ class UR_Robotiq_2f_85_Controller(UR5):
             if self.gripper is None:
                 print(Colors.RED, "Warning: Gripper is not initialized!", Colors.RESET)
                 return
-            self.gripper.open(self.gripper._max_speed, 0)
+            # self.gripper.open(self.gripper._max_speed, 0)
+            self.gripper_move_to(20)
         elif isinstance(self.gripper, RobotiqGripperControl):
             if self.gripper is None:
                 print(Colors.RED, "Warning: Gripper is not initialized!", Colors.RESET)
                 return
             self.gripper.open()
+
+    def gripper_move_to(self, position):
+        if isinstance(self.gripper, RobotiqGripper):
+            if self.gripper is None:
+                print(Colors.RED, "Warning: Gripper is not initialized!", Colors.RESET)
+                return
+            self.gripper.move(position, speed=self.gripper._max_speed, force=0)
+        elif isinstance(self.gripper, RobotiqGripperControl):
+            if self.gripper is None:
+                print(Colors.RED, "Warning: Gripper is not initialized!", Colors.RESET)
+                return
 
     def reached_goal(self, goal_q, tol=0.001):
         actual_q = self.rtde_r.getActualQ()
@@ -110,23 +122,29 @@ class UR_Robotiq_2f_85_Controller(UR5):
     # def get_ee_state(self):
     #     return self.rtde_r.getActualTCPPose()
 
+
 def single_arm_test():
     dt = 0.002
-    robot = UR_Robotiq_2f_85_Controller(dt=dt, robot_ip="172.17.139.100", init_gripper=True)
+    robot = UR_Robotiq_2f_85_Controller(
+        dt=dt, robot_ip="172.17.139.100", init_gripper=True)
     init_q = robot.get_joint_state()
     print("Initial joint state:\n", init_q)
     init_ee_pos = robot.get_ee_state()
     print("Initial end-effector position:\n", init_ee_pos)
+    # robot.gripper_move_to(50)
+    # robot.moveJ([0, -np.pi/2, 0, 0, 0, 0], speed=0.1, acceleration=0.1)
+
     robot.close_gripper()
     robot.open_gripper()
 
-    for i in range(3):
-        init_q[0] += 0.1
-        robot.moveJ(init_q, 0.5, 0.5, sleep=0.1)
-        init_q[0] -= 0.1
-        robot.moveJ(init_q, 0.5, 0.5, sleep=0.1)
+    # for i in range(3):
+    #     init_q[0] += 0.1
+    #     robot.moveJ(init_q, 0.5, 0.5, sleep=0.1)
+    #     init_q[0] -= 0.1
+    #     robot.moveJ(init_q, 0.5, 0.5, sleep=0.1)
     # controller0.close_gripper()
     # controller0.open_gripper()
+
 
 if __name__ == "__main__":
     single_arm_test()
