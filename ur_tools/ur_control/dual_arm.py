@@ -13,7 +13,7 @@ def calibrate_arm2():
     print(f"Camera pose relative to arm1 base:\n{cam2base1}")
     # We assume arm1's base is at the origin of the world frame
     # Now we have to calibrate the base of arm2 to the camera
-    cam2base2 = calibrate_eye_to_hand(camera=camera, ip_address="172.17.139.103", write_pose_to_file=False, x_num=4, y_num=4) # this is the ip of arm2
+    cam2base2 = calibrate_eye_to_hand(camera=camera, ip_address="172.17.139.103", write_pose_to_file=False, x_num=5, y_num=5) # this is the ip of arm2
     camera_rotation = cam2base2[:3, :3] 
     camera_translation = cam2base2[:3, 3]
     print(f"Camera rotation relative to arm2 base:\n{camera_rotation}")

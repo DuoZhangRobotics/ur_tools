@@ -5,6 +5,22 @@ from scipy.spatial.transform import Rotation as R
 from ur_tools.camera.realsense_camera import Camera
 from ur_tools.ur_control.ur5_robotiq_2f_85_control import UR_Robotiq_2f_85_Controller 
 
+def yaw_only_projection(T_b1_b2):
+    R = T_b1_b2[:3,:3]
+    # Nearest Rz(theta) in least-squares sense for the top-left 2x2 block
+    c = R[0,0] + R[1,1]
+    s = R[1,0] - R[0,1]
+    theta = np.arctan2(s, c)
+    cth, sth = np.cos(theta), np.sin(theta)
+    Rz = np.array([[cth, -sth, 0],
+                   [sth,  cth, 0],
+                   [  0,    0, 1]])
+    Tp = np.eye(4)
+    Tp[:3,:3] = Rz
+    Tp[:3,3]  = T_b1_b2[:3,3]   # zero z if same table height
+    Tp[2,3] = 0
+    return Tp, theta
+
 def debug_main_arm():
     dt = 0.002
     robot = UR_Robotiq_2f_85_Controller(
@@ -55,11 +71,10 @@ def debug_second_arm():
     dt = 0.002
     robot = UR_Robotiq_2f_85_Controller(
         dt=dt, robot_ip="172.17.139.103", init_gripper=True)
-    init_q = robot.get_joint_state()
+    init_ee_pos = robot.get_ee_state()
     robot.moveJ(
         [1.5708118677139282, -2.2, 1.9, -1.383, -1.5700505415545862, 0], speed=0.3, acceleration=0.3
     )
-    init_ee_pos = robot.get_ee_state()
     print("Initial end-effector position:\n", init_ee_pos)
     robot.open_gripper()
     camera = Camera(on_hand=False)
@@ -73,43 +88,72 @@ def debug_second_arm():
     gray = cv2.cvtColor(colored_image, cv2.COLOR_RGB2GRAY)
 
     corners, ids, rejected = detector.detectMarkers(gray)
-
-    center = np.mean(corners[0], axis=1)
-    print(f"Center of detected marker: {center}")
-    x, y = center[0][0], center[0][1]
-    z = depth_image[int(y), int(x)]
-    print(f"Depth of detected marker: {z}")
-    x_cam = (x - camera.intrinsics[0, 2]) * z / camera.intrinsics[0, 0]
-    y_cam = (y - camera.intrinsics[1, 2]) * z / camera.intrinsics[1, 1]
-    print(f"Camera coordinates: ({x_cam}, {y_cam}, {z})")
-    world_pos = camera.pos_in_camera_to_ee(np.array([[x_cam, y_cam, z]]))
-    print(f"World coordinates: {world_pos}")
-
-    world_pos = camera.pos_in_image_to_robot(np.array([[x, y]]), np.array([z]))[0]
-    print(f"World coordinates: {world_pos}")
-    
     base2base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ur_tools/ur_control", "base2base.txt")
     base2base = np.loadtxt(base2base_path, delimiter=" ")
+
+    base2base, theta = yaw_only_projection(base2base)
+    print("base2base:\n", base2base)
+    print("Yaw angle (degrees): ", theta / np.pi * 180)
+
+    cam2base_arm2_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ur_tools/camera", "cam2base_pose_arm2.txt")
+    cam2base_arm2 = np.loadtxt(cam2base_arm2_path, delimiter=" ")
+    cam2base_arm1 = camera.cam2robot
+    arm1_z_in_cam = np.linalg.inv(cam2base_arm1[:3, :3]) @ np.array([[0], [0], [1]])
+    arm2_z_in_cam = np.linalg.inv(cam2base_arm2[:3, :3]) @ np.array([[0], [0], [1]])
+    print(f"Arm 1 Z in camera: {arm1_z_in_cam}")
+    print(f"Arm 2 Z in camera: {arm2_z_in_cam}")
+    dot_product = np.dot(arm1_z_in_cam.reshape(-1), arm2_z_in_cam.reshape(-1)) / (np.linalg.norm(arm1_z_in_cam) * np.linalg.norm(arm2_z_in_cam))
+    angle_z_arm1_arm2 = np.arccos(dot_product) * 180 / np.pi
+    print(f"Angle in degrees between Arm 1 and Arm 2 in camera: {angle_z_arm1_arm2}")
     rot = R.from_matrix(base2base[:3, :3])
+    rpy_xyz = rot.as_euler('xyz', degrees=True)  # roll(x), pitch(y), yaw(z)
     rotvec = rot.as_rotvec()
     theta = np.linalg.norm(rotvec)
     axis = rotvec / theta if theta > 1e-12 else np.array([1, 0, 0])
     print(f"Rotation axis: {axis}, Angle: {theta}")
-    # base2base[:, 3] = np.array([-0.0, -1.097, 0, 1])
-    world_pos = base2base @ np.array([[world_pos[0]], [world_pos[1]], [world_pos[2]], [1]])
-    world_pos = world_pos.flatten()[:3]
-    print(f"Transformed world coordinates: {world_pos}")
+    print(f"RPY (degrees): {rpy_xyz}")
+    # np.savetxt(base2base_path, base2base)
 
-    input("Press Enter to Move EE to marker")
+    for corner in corners:
+        center = np.mean(corner, axis=1)
+        print(f"Center of detected marker: {center}")
+        x, y = center[0][0], center[0][1]
+        z = depth_image[int(y), int(x)]
+        print(f"Depth of detected marker: {z}")
+        x_cam = (x - camera.intrinsics[0, 2]) * z / camera.intrinsics[0, 0]
+        y_cam = (y - camera.intrinsics[1, 2]) * z / camera.intrinsics[1, 1]
+        print(f"Camera coordinates: ({x_cam}, {y_cam}, {z})")
+        world_pos = camera.pos_in_camera_to_ee(np.array([[x_cam, y_cam, z]]))
+        print(f"World coordinates: {world_pos}")
 
-    pos = [world_pos[0], world_pos[1], world_pos[2]/2, 0, -np.pi, 0]
-    robot.moveL(pos, speed=0.3, acceleration=0.3)
-    input("Press Enter to close gripper")
-    robot.close_gripper()
-    input("Press Enter to open gripper")
-    robot.open_gripper()
-    
+        world_pos = camera.pos_in_image_to_robot(np.array([[x, y]]), np.array([z]))[0]
+        print(f"World coordinates: {world_pos}")
+        
+        world_pos = base2base @ np.array([[world_pos[0]], [world_pos[1]], [world_pos[2]], [1]])
+        world_pos = world_pos.flatten()[:3]
+        print(f"Transformed world coordinates: {world_pos}")
+
+        input("Press Enter to Move EE to marker")
+
+        pos = [world_pos[0], world_pos[1], world_pos[2]/2, 0, -np.pi, 0]
+        robot.moveL(pos, speed=0.3, acceleration=0.3)
+        input("Press Enter to close gripper")
+        robot.close_gripper()
+        input("Press Enter to open gripper")
+        robot.open_gripper()
+        input("Press Enter to go home")
+        robot.moveJ(
+            [1.5708118677139282, -2.2, 1.9, -1.383, -1.5700505415545862, 0], speed=0.3, acceleration=0.3
+        )
+
+        
 
 if __name__ == "__main__":
+    # print(3.109430060929261/np.pi*180)
+    # print(178.17605049/180 * np.pi)
+    # # convert 178.17605049 around [0, 0, 1] to rotation matrix
+    # rot = R.from_euler('xyz', [0, 0, 178.17605049/180 * np.pi])
+    # rot_matrix = rot.as_matrix()
+    # print(f"Rotation matrix:\n{rot_matrix}")
     # debug_main_arm()
     debug_second_arm()
