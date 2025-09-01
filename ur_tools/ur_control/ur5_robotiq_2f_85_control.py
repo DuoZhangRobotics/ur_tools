@@ -85,7 +85,7 @@ class UR_Robotiq_2f_85_Controller(UR5):
                 print(Colors.RED, "Warning: Gripper is not initialized!", Colors.RESET)
                 return
             # self.gripper.open(self.gripper._max_speed, 0)
-            self.gripper_move_to(20)
+            self.gripper_move_to(10)
         elif isinstance(self.gripper, RobotiqGripperControl):
             if self.gripper is None:
                 print(Colors.RED, "Warning: Gripper is not initialized!", Colors.RESET)

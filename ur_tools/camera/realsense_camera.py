@@ -174,7 +174,7 @@ class Camera:
 
         # We will be removing the background of objects more than
         #  clipping_distance_in_meters meters away
-        self.clipping_distance_in_meters = [0.2, 1]
+        self.clipping_distance_in_meters = [0.2, 1.5]
 
         color_profile = rs.video_stream_profile(profile.get_stream(rs.stream.color))
         intrinsics = color_profile.get_intrinsics()
