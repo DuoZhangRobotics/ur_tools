@@ -205,5 +205,5 @@ def calibrate_eye_to_hand(ip_address="172.17.139.103", camera=None, write_pose_t
     return camera_pose 
 
 if __name__ == "__main__":
-    ip = "172.17.139.103"
+    ip = "172.17.139.100"
     calibrate_eye_to_hand(ip_address=ip)

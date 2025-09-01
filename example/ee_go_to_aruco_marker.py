@@ -11,6 +11,7 @@ def yaw_only_projection(T_b1_b2):
     c = R[0,0] + R[1,1]
     s = R[1,0] - R[0,1]
     theta = np.arctan2(s, c)
+    theta=np.pi
     cth, sth = np.cos(theta), np.sin(theta)
     Rz = np.array([[cth, -sth, 0],
                    [sth,  cth, 0],
@@ -43,29 +44,55 @@ def debug_main_arm():
     gray = cv2.cvtColor(colored_image, cv2.COLOR_RGB2GRAY)
 
     corners, ids, rejected = detector.detectMarkers(gray)
+    # for corner in corners:
+    #     center = np.mean(corner, axis=1)
+    #     print(f"Center of detected marker: {center}")
+    #     x, y = center[0][0], center[0][1]
+    #     for i in [0, -2, 2]:
+    #         for j in [0, -2, 2]:
+    #             if 0 <= int(y)+i < depth_image.shape[0] and 0 <= int(x)+j < depth_image.shape[1]:
+    #                 z = depth_image[int(y)+i, int(x)+j]
+    #                 print(f"Depth of detected marker at offset ({i}, {j}): {z}")
+    #                 x_cam = (x - camera.intrinsics[0, 2]) * z / camera.intrinsics[0, 0]
+    #                 y_cam = (y - camera.intrinsics[1, 2]) * z / camera.intrinsics[1, 1]
+    #                 world_pos = camera.pos_in_camera_to_ee(np.array([[x_cam, y_cam, z]]))
+    #                 print(f"World coordinates: {world_pos}")
 
-    center = np.mean(corners[0], axis=1)
-    print(f"Center of detected marker: {center}")
-    x, y = center[0][0], center[0][1]
-    z = depth_image[int(y), int(x)]
-    print(f"Depth of detected marker: {z}")
-    x_cam = (x - camera.intrinsics[0, 2]) * z / camera.intrinsics[0, 0]
-    y_cam = (y - camera.intrinsics[1, 2]) * z / camera.intrinsics[1, 1]
-    print(f"Camera coordinates: ({x_cam}, {y_cam}, {z})")
-    world_pos = camera.pos_in_camera_to_ee(np.array([[x_cam, y_cam, z]]))
-    print(f"World coordinates: {world_pos}")
+    #                 world_pos = camera.pos_in_image_to_robot(np.array([[x, y]]), np.array([z]))[0]
+    #                 print(f"World coordinates: {world_pos}")
+    #     z = depth_image[int(y), int(x)]
+    #     print(f"Depth of detected marker: {z}")
 
-    world_pos = camera.pos_in_image_to_robot(np.array([[x, y]]), np.array([z]))[0]
-    print(f"World coordinates: {world_pos}")
+    # exit()
 
-    input("Press Enter to Move EE to marker")
+    for corner in corners:
+        center = np.mean(corner, axis=1)
+        print(f"Center of detected marker: {center}")
+        x, y = center[0][0], center[0][1]
+        z = depth_image[int(y), int(x)]
+        print(f"Depth of detected marker: {z}")
+        x_cam = (x - camera.intrinsics[0, 2]) * z / camera.intrinsics[0, 0]
+        y_cam = (y - camera.intrinsics[1, 2]) * z / camera.intrinsics[1, 1]
+        print(f"Camera coordinates: ({x_cam}, {y_cam}, {z})")
+        input("Press Enter to Move EE to marker")
 
-    pos = [world_pos[0], world_pos[1], world_pos[2]/2, 0, -np.pi, 0]
-    robot.moveL(pos, speed=0.3, acceleration=0.3)
-    input("Press Enter to close gripper")
-    robot.close_gripper()
-    input("Press Enter to open gripper")
-    robot.open_gripper()
+        x_cam = (x - camera.intrinsics[0, 2]) * z / camera.intrinsics[0, 0]
+        y_cam = (y - camera.intrinsics[1, 2]) * z / camera.intrinsics[1, 1]
+        world_pos = camera.pos_in_camera_to_ee(np.array([[x_cam, y_cam, z]]))
+        print(f"World coordinates: {world_pos}")
+
+        world_pos = camera.pos_in_image_to_robot(np.array([[x, y]]), np.array([z]))[0]
+        print(f"World coordinates: {world_pos}")
+        pos = [world_pos[0], world_pos[1], world_pos[2]/2, 0, -np.pi, 0]
+        robot.moveL(pos, speed=0.3, acceleration=0.3)
+        input("Press Enter to close gripper")
+        robot.close_gripper()
+        input("Press Enter to open gripper")
+        robot.open_gripper()
+        input("Press Enter to go home")
+        robot.moveJ(
+            [1.5708118677139282, -2.2, 1.9, -1.383, -1.5700505415545862, 0], speed=0.3, acceleration=0.3
+        )
 
 def debug_second_arm():
     dt = 0.002

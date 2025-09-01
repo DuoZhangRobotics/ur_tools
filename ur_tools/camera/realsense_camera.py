@@ -50,9 +50,11 @@ class Camera:
         elif self.device_name == "Intel RealSense D435":
             config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
             config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+            # config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
         elif self.device_name == "Intel RealSense D415":
             config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-            config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
+            config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+            # config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8, 30)
         elif self.device_name == "Intel RealSense L515":
             config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
             config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
