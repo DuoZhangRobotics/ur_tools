@@ -34,7 +34,7 @@ def debug_main_arm():
     print("Initial end-effector position:\n", init_ee_pos)
     robot.open_gripper()
     camera = Camera(on_hand=False)
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
     detector = cv2.aruco.ArucoDetector(aruco_dict)
 
     camera.show_video_realtime()
@@ -105,7 +105,7 @@ def debug_second_arm():
     print("Initial end-effector position:\n", init_ee_pos)
     robot.open_gripper()
     camera = Camera(on_hand=False)
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
     detector = cv2.aruco.ArucoDetector(aruco_dict)
 
     camera.show_video_realtime()
@@ -156,8 +156,9 @@ def debug_second_arm():
         world_pos = camera.pos_in_image_to_robot(np.array([[x, y]]), np.array([z]))[0]
         print(f"World coordinates: {world_pos}")
         
-        world_pos = base2base @ np.array([[world_pos[0]], [world_pos[1]], [world_pos[2]], [1]])
-        world_pos = world_pos.flatten()[:3]
+        # world_pos = base2base @ np.array([[world_pos[0]], [world_pos[1]], [world_pos[2]], [1]])
+        # world_pos = world_pos.flatten()[:3]
+        world_pos = (-1 * world_pos[0], -1.095 - world_pos[1], world_pos[2])  # manual adjustment
         print(f"Transformed world coordinates: {world_pos}")
 
         input("Press Enter to Move EE to marker")
