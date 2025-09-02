@@ -12,7 +12,6 @@ def yaw_only_projection(T_b1_b2):
     c = R[0,0] + R[1,1]
     s = R[1,0] - R[0,1]
     theta = np.arctan2(s, c)
-    theta=180/180*np.pi
     cth, sth = np.cos(theta), np.sin(theta)
     Rz = np.array([[cth, -sth, 0],
                    [sth,  cth, 0],
@@ -197,7 +196,7 @@ def debug_second_arm():
         print(f"Marker {marker_id}: averaged world_pos over {len(samples)} samples -> {avg_pos}")
         # Optional manual adjustment (existing logic)
         # world_pos = (-1 * avg_pos[0], -1.095 - avg_pos[1], avg_pos[2])
-        base2base=make_base2base(0, -1.098, 178)
+        # base2base=make_base2base(0, -1.098, 178)
         world_pos = base2base @ np.array([avg_pos[0], avg_pos[1], avg_pos[2], 1])
         print(f"Transformed world coordinates: {world_pos}")
 
