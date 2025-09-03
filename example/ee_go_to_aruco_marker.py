@@ -163,24 +163,27 @@ def debug_second_arm():
     base2base, theta = yaw_only_projection(base2base)
     print("base2base:\n", base2base)
     print("Yaw angle (degrees): ", theta / np.pi * 180)
-
-    cam2base_arm2_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ur_tools/camera", "cam2base_pose_arm2.txt")
-    cam2base_arm2 = np.loadtxt(cam2base_arm2_path, delimiter=" ")
-    cam2base_arm1 = camera.cam2robot
-    arm1_z_in_cam = np.linalg.inv(cam2base_arm1[:3, :3]) @ np.array([[0], [0], [1]])
-    arm2_z_in_cam = np.linalg.inv(cam2base_arm2[:3, :3]) @ np.array([[0], [0], [1]])
-    print(f"Arm 1 Z in camera: {arm1_z_in_cam}")
-    print(f"Arm 2 Z in camera: {arm2_z_in_cam}")
-    dot_product = np.dot(arm1_z_in_cam.reshape(-1), arm2_z_in_cam.reshape(-1)) / (np.linalg.norm(arm1_z_in_cam) * np.linalg.norm(arm2_z_in_cam))
-    angle_z_arm1_arm2 = np.arccos(dot_product) * 180 / np.pi
-    print(f"Angle in degrees between Arm 1 and Arm 2 in camera: {angle_z_arm1_arm2}")
     rot = R.from_matrix(base2base[:3, :3])
     rpy_xyz = rot.as_euler('xyz', degrees=True)  # roll(x), pitch(y), yaw(z)
     rotvec = rot.as_rotvec()
     theta = np.linalg.norm(rotvec)
     axis = rotvec / theta if theta > 1e-12 else np.array([1, 0, 0])
+    translation = base2base[:3, 3]
+    print(f"Translation: {translation}")
     print(f"Rotation axis: {axis}, Angle: {theta}")
     print(f"RPY (degrees): {rpy_xyz}")
+    new_base = base2base @ np.array([0, 0, 0, 1])
+    print(f"New base: {new_base}")
+    new_base[1] += 0.55  # Add 0.55 to the y axis
+    rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
+    rotated_pose = rotation_matrix @ new_base[:3]
+    print(f"Rotated base: {rotated_pose}")
+    workspace_center = np.array([0, -0.55, 0])
+    rotated_workspace_center = rotation_matrix @ workspace_center[:3]
+    rotated_workspace_center[0] -= 0.55
+    print(f"Rotated workspace center: {rotated_workspace_center}")
+    exit()
+
     # np.savetxt(base2base_path, base2base)
 
     if ids is None or len(ids) == 0:
@@ -194,12 +197,8 @@ def debug_second_arm():
             continue
 
         print(f"Marker {marker_id}: averaged world_pos over {len(samples)} samples -> {avg_pos}")
-        # Optional manual adjustment (existing logic)
-        # world_pos = (-1 * avg_pos[0], -1.095 - avg_pos[1], avg_pos[2])
-        # base2base=make_base2base(0, -1.098, 178)
         world_pos = base2base @ np.array([avg_pos[0], avg_pos[1], avg_pos[2], 1])
         print(f"Transformed world coordinates: {world_pos}")
-
         input("Press Enter to Move EE to averaged marker position")
         pos = [world_pos[0], world_pos[1], world_pos[2]/2, 0, -np.pi, 0]
         robot.moveL(pos, speed=0.3, acceleration=0.3)
@@ -211,8 +210,6 @@ def debug_second_arm():
         robot.moveJ(
             [1.5708118677139282, -2.2, 1.9, -1.383, -1.5700505415545862, 0], speed=0.3, acceleration=0.3
         )
-
-        
 
 if __name__ == "__main__":
     # print(3.109430060929261/np.pi*180)

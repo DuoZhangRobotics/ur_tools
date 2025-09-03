@@ -44,7 +44,6 @@ def debug_second_arm():
     axis = rotvec / theta if theta > 0 else np.array([1, 0, 0])
     print("Rotation axis:", axis)
     print("Rotation angle (theta) in degrees:", np.degrees(theta))
-    exit()
     xs = np.array([-0.1, 0, 0.1])
     ys = np.array([-0.4, -0.5, -0.6])
     xs, ys = np.meshgrid(xs, ys)
