@@ -5,6 +5,7 @@ setup(
     version='0.2.0',
     packages=find_packages(),
     install_requires=[
+        'natnet==0.3.0',
         'numpy>=1.26,<2',
         'opencv-python>=4.10,<4.12',
         'pyrealsense2',
@@ -16,6 +17,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ur-optitrack-calibrate=ur_tools.optitrack.cli:main',
+            'ur-optitrack-publisher=ur_tools.optitrack.natnet_pose_publisher:main',
         ],
     },
     author='Duo Zhang, Baichuan Huang, Kowndinya Boyalakuntla',

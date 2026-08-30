@@ -28,8 +28,10 @@ In each new terminal, run `source /home/duo/ur_tools/tools/activate_ros.sh`.
 
 ```sh
 source /home/duo/ur_tools/tools/activate_ros.sh
-ros2 run motion_capture_tracking motion_capture_tracking_node --ros-args \
-  --params-file /home/duo/ur_tools/config/optitrack_motive.yaml
+ur-optitrack-publisher \
+  --server-ip 172.16.90.213 \
+  --local-ip 172.16.90.195 \
+  --target-name ur_calib
 ```
 
 Confirm that the full pose is finite:
