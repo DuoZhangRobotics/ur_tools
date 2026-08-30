@@ -10,13 +10,6 @@ from motion_capture_tracking_interfaces.msg import NamedPose, NamedPoseArray
 from natnet import DataDescriptions, DataFrame, NatNetClient
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from tf2_ros import StaticTransformBroadcaster
-
-from .static_transform import (
-    DEFAULT_CALIBRATION,
-    load_static_transform,
-    transform_message,
-)
 
 
 class NatNetPosePublisher(Node):
@@ -29,7 +22,6 @@ class NatNetPosePublisher(Node):
         topic: str,
         frame_id: str,
         target_name: str | None,
-        calibration_file: str | None,
     ) -> None:
         super().__init__("ur_optitrack_natnet")
         self.frame_id = frame_id
@@ -39,17 +31,6 @@ class NatNetPosePublisher(Node):
         self.publisher = self.create_publisher(
             NamedPoseArray, topic, qos_profile_sensor_data
         )
-        self.static_broadcaster = None
-        if calibration_file is not None:
-            stored = load_static_transform(calibration_file)
-            self.static_broadcaster = StaticTransformBroadcaster(self)
-            self.static_broadcaster.sendTransform(
-                transform_message(stored, self.get_clock().now().to_msg())
-            )
-            self.get_logger().info(
-                f"Published static transform {stored.parent_frame} -> "
-                f"{stored.child_frame} from {stored.source_path}"
-            )
         self.client = NatNetClient(
             server_ip_address=server_ip,
             local_ip_address=local_ip,
@@ -127,12 +108,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--topic", default="/poses")
     parser.add_argument("--frame-id", default="world")
     parser.add_argument("--target-name", default="ur_calib")
-    parser.add_argument(
-        "--calibration-file",
-        default=str(DEFAULT_CALIBRATION),
-        help="accepted base-from-mocap YAML to broadcast on /tf_static",
-    )
-    parser.add_argument("--no-static-tf", action="store_true")
     return parser
 
 
@@ -148,9 +123,6 @@ def main(argv: list[str] | None = None) -> int:
             topic=args.topic,
             frame_id=args.frame_id,
             target_name=args.target_name or None,
-            calibration_file=(
-                None if args.no_static_tf else args.calibration_file
-            ),
         )
         rclpy.spin(node)
         return 0

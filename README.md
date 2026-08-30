@@ -8,6 +8,10 @@ OptiTrack-based lab setups.
 The OptiTrack calibration tool pairs a Motive rigid-body pose with the UR5e TCP
 pose at 25 reviewed robot configurations. It estimates both the OptiTrack-world
 to UR-base transform and the unknown calibration-target mounting transform.
+Motive 2.0 rigid bodies are received by the project’s direct NatNet 3.0
+publisher and forwarded to the calibration collector on ROS `/poses`.
+`ur_calib` and its marker board are temporary calibration equipment; normal
+drone operation uses only the promoted static transform.
 
 See [docs/OPTITRACK_CALIBRATION.md](docs/OPTITRACK_CALIBRATION.md) for the uv
 environment, Motive setup, dry run, collection, offline solve, output files, and
@@ -19,6 +23,7 @@ The default profile targets:
 - Motive: `172.16.90.213`
 - ROS topic: `/poses`
 - Motive rigid body: `ur_calib`
+- Runtime calibration: `config/optitrack_to_ur_base.yaml`
 
 Running `ur-optitrack-calibrate` without `--execute` is always a no-motion
 dry run. Automatic movement additionally requires typing the robot-IP
