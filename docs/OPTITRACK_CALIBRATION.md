@@ -34,6 +34,11 @@ ur-optitrack-publisher \
   --target-name ur_calib
 ```
 
+The publisher automatically loads
+`config/optitrack_to_ur_base.yaml` and broadcasts the accepted
+`base -> world` transform on `/tf_static`. Use `--no-static-tf` only while
+producing a replacement calibration.
+
 Confirm that the full pose is finite:
 
 ```sh
