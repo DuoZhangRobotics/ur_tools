@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 import yaml
 
 from .transforms import invert, validate_transform
-
 
 DEFAULT_CALIBRATION = (
     Path(__file__).resolve().parents[2] / "config" / "optitrack_to_ur_base.yaml"
@@ -28,9 +27,7 @@ class WorldBaseTransform:
     source_path: Path
 
     @classmethod
-    def load(
-        cls, path: str | Path = DEFAULT_CALIBRATION
-    ) -> "WorldBaseTransform":
+    def load(cls, path: str | Path = DEFAULT_CALIBRATION) -> WorldBaseTransform:
         source = Path(path).expanduser().resolve()
         raw = yaml.safe_load(source.read_text(encoding="utf-8"))
         if not isinstance(raw, dict) or raw.get("schema_version") != 1:

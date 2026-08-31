@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .config import ConfigError, load_config
 from .dataset import load_dataset
-from .solver import solve_calibration, static_tf_command, write_result
+from .solver import solve_calibration, write_result
 
 DEFAULT_CONFIG = (
     Path(__file__).resolve().parents[2] / "config" / "optitrack_ur5e_197.yaml"
@@ -82,11 +82,6 @@ def _solve(dataset, config, output_directory: Path) -> int:
         print("REJECTED: " + "; ".join(result.reasons), file=sys.stderr)
         return 2
     print("ACCEPTED")
-    print(
-        static_tf_command(
-            result.base_from_mocap, dataset.base_frame, dataset.mocap_frame
-        )
-    )
     return 0
 
 

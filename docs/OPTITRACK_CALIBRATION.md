@@ -138,17 +138,13 @@ Use two terminals.
 
 ### Terminal 1: Motive 2.0 pose publisher
 
-Do not publish the previously accepted static transform while creating a
-replacement:
-
 ```sh
 cd /home/duo/ur_tools
 source tools/activate_ros.sh
 ur-optitrack-publisher \
   --server-ip 172.16.90.213 \
   --local-ip 172.16.90.195 \
-  --target-name ur_calib \
-  --no-static-tf
+  --target-name ur_calib
 ```
 
 The publisher should report:
@@ -288,19 +284,18 @@ frame. The runtime coordination layer must:
 Do not send UR-base coordinates directly to the existing Crazyswarm
 `go_to` service; it currently interprets goals in Motive `world`.
 
-For visualization or a temporary integration test, the stored matrix can be
-broadcast as:
+Load and apply the accepted matrix directly in the coordination program:
 
-```sh
-ros2 run tf2_ros static_transform_publisher \
-  --x -0.0710346707 --y -0.683186996 --z 0.00744266017 \
-  --qx -0.0124699739 --qy 0.00622861175 \
-  --qz 0.0151664772 --qw 0.999787819 \
-  --frame-id base --child-frame-id world
+```python
+from ur_tools.optitrack import WorldBaseTransform
+
+frames = WorldBaseTransform.load()
+drone_position_base = frames.world_to_base(drone_position_world)
+crazyflie_goal_world = frames.base_to_world(planner_goal_base)
 ```
 
-This command intentionally remains running until Ctrl+C. A future runtime launch
-should load the YAML automatically instead of duplicating these numbers.
+This path is ROS-free. It does not publish TF or depend on `ur_calib`; it only
+reads `config/optitrack_to_ur_base.yaml`.
 
 ## Troubleshooting
 

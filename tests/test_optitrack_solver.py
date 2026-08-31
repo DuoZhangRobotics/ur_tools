@@ -7,7 +7,7 @@ import yaml
 
 from ur_tools.optitrack.config import load_config
 from ur_tools.optitrack.dataset import CalibrationDataset, CalibrationSample
-from ur_tools.optitrack.solver import solve_calibration, static_tf_command, write_result
+from ur_tools.optitrack.solver import solve_calibration, write_result
 from ur_tools.optitrack.transforms import (
     invert,
     pose_error,
@@ -80,8 +80,6 @@ def test_exact_solver_recovers_transform_directions() -> None:
     _assert_transform_close(
         result.tcp_from_target, expected_tcp_from_target, 1e-6, 1e-4
     )
-    command = static_tf_command(result.base_from_mocap, "base", "world")
-    assert "--frame-id base --child-frame-id world" in command
 
 
 def test_noisy_solver_meets_default_acceptance() -> None:
@@ -135,7 +133,7 @@ def test_incomplete_dataset_can_never_be_accepted() -> None:
         solve_calibration(dataset, CONFIG.solver)
 
 
-def test_accepted_result_writes_matrices_metrics_and_tf(tmp_path: Path) -> None:
+def test_accepted_result_writes_matrices_and_metrics(tmp_path: Path) -> None:
     dataset, _, _ = _synthetic_dataset()
     result = solve_calibration(dataset, CONFIG.solver)
     output = write_result(tmp_path, result, dataset)
@@ -143,7 +141,7 @@ def test_accepted_result_writes_matrices_metrics_and_tf(tmp_path: Path) -> None:
 
     assert output.name == "calibration.yaml"
     assert payload["accepted"]
-    assert "static_transform_publisher" in payload["static_tf_command"]
+    assert "static_tf_command" not in payload
     for name in ("base_from_mocap.txt", "mocap_from_base.txt", "tcp_from_target.txt"):
         assert (tmp_path / name).is_file()
 

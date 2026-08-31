@@ -6,6 +6,7 @@ datasets can be inspected and solved on any development machine.
 
 from .config import CalibrationConfig, ConfigError, load_config
 from .dataset import CalibrationDataset, CalibrationSample, load_dataset, save_dataset
+from .frame_transform import WorldBaseTransform
 from .solver import CalibrationResult, solve_calibration, write_result
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     "CalibrationResult",
     "CalibrationSample",
     "ConfigError",
+    "WorldBaseTransform",
     "load_config",
     "load_dataset",
     "save_dataset",

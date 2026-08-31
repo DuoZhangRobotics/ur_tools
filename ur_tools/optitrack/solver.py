@@ -20,9 +20,7 @@ from .transforms import (
     invert,
     params_from_transform,
     pose_error,
-    quaternion_xyzw,
     transform_from_params,
-    validate_transform,
 )
 
 
@@ -284,21 +282,6 @@ def _metrics_dict(metrics: ErrorMetrics) -> dict[str, float | int]:
     }
 
 
-def static_tf_command(
-    base_from_mocap: np.ndarray, base_frame: str, mocap_frame: str
-) -> str:
-    transform = validate_transform(base_from_mocap, "base_from_mocap")
-    quaternion = quaternion_xyzw(transform)
-    translation = transform[:3, 3]
-    return (
-        "ros2 run tf2_ros static_transform_publisher "
-        f"--x {translation[0]:.9g} --y {translation[1]:.9g} --z {translation[2]:.9g} "
-        f"--qx {quaternion[0]:.9g} --qy {quaternion[1]:.9g} "
-        f"--qz {quaternion[2]:.9g} --qw {quaternion[3]:.9g} "
-        f"--frame-id {base_frame} --child-frame-id {mocap_frame}"
-    )
-
-
 def write_result(
     output_directory: str | Path,
     result: CalibrationResult,
@@ -308,13 +291,6 @@ def write_result(
     directory.mkdir(parents=True, exist_ok=True)
     mocap_from_base = invert(result.base_from_mocap)
     target_from_tcp = invert(result.tcp_from_target)
-    command = (
-        static_tf_command(
-            result.base_from_mocap, dataset.base_frame, dataset.mocap_frame
-        )
-        if result.accepted
-        else None
-    )
     payload = {
         "schema_version": 1,
         "accepted": result.accepted,
@@ -337,7 +313,6 @@ def write_result(
             "all_samples": _metrics_dict(result.all_sample_metrics),
         },
         "rejection_reasons": list(result.reasons),
-        "static_tf_command": command,
     }
     filename = "calibration.yaml" if result.accepted else "calibration_candidate.yaml"
     result_path = directory / filename

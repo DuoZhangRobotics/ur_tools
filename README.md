@@ -11,11 +11,12 @@ to UR-base transform and the unknown calibration-target mounting transform.
 Motive 2.0 rigid bodies are received by the project’s direct NatNet 3.0
 publisher and forwarded to the calibration collector on ROS `/poses`.
 `ur_calib` and its marker board are temporary calibration equipment; normal
-drone operation uses only the promoted static transform.
+drone operation loads the promoted matrix directly with
+`WorldBaseTransform`.
 
 See [docs/OPTITRACK_CALIBRATION.md](docs/OPTITRACK_CALIBRATION.md) for the uv
 environment, Motive setup, dry run, collection, offline solve, output files, and
-static-TF command.
+ROS-free runtime state/goal conversions.
 
 The default profile targets:
 
