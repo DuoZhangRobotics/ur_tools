@@ -61,6 +61,25 @@ ur-optitrack-coverage --execute \
   --bounds-max 1.5 0.0 1.5
 ```
 
+If Motive reconstructs the three CW-250 spheres but its rigid body remains
+invalid at the origin, use the marker-centroid fallback:
+
+```sh
+ur-optitrack-coverage --execute \
+  --use-unmodeled-centroid \
+  --expected-marker-count 3 \
+  --duration-s 120 \
+  --voxel-size-m 0.05 \
+  --bounds-min -1.5 -2.0 0.0 \
+  --bounds-max 1.5 0.0 1.5
+```
+
+Centroid mode accepts a frame only when exactly three unmodeled reconstructed
+markers are present. Remove or cover all drone markers and other passive
+reflectors during the sweep. It maps the triangle centroid and does not recover
+wand orientation or marker identity. With `--expected-marker-count`, this mode
+does not require a valid or correctly named Motive rigid-body asset.
+
 Move slowly, cover multiple wand orientations in every region, and dwell in
 suspected blind spots. Use `--duration-s 0` for an operator-stopped sweep.
 

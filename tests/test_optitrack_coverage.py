@@ -4,6 +4,7 @@ from pathlib import Path
 from threading import Lock
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from ur_tools.optitrack.coverage import (
@@ -169,6 +170,103 @@ def test_invalid_wand_fails_fast_with_unmodeled_marker_diagnostic() -> None:
     collector._samples = [sample(0.0, valid=False)]
     collector._maximum_target_marker_count = 0
     collector._maximum_unmodeled_marker_count = 3
+    collector.use_unmodeled_centroid = False
 
     with pytest.raises(CoverageError, match="unmodeled reconstructed markers=3"):
         collector.wait_for_valid_tracking(0.01)
+
+
+class IdentityTransform:
+    def world_to_base(self, point):
+        return np.asarray(point, dtype=float)
+
+
+def _collector_for_centroid() -> NatNetCoverageCollector:
+    collector = object.__new__(NatNetCoverageCollector)
+    collector.target_name = "coverage_wand"
+    collector.transform = IdentityTransform()
+    collector.use_unmodeled_centroid = True
+    collector._lock = Lock()
+    collector._target_id = None
+    collector._expected_marker_count = 3
+    collector._samples = []
+    collector._maximum_target_marker_count = 0
+    collector._maximum_unmodeled_marker_count = 0
+    collector.client = SimpleNamespace(request_modeldef=lambda: None)
+    return collector
+
+
+def _frame_with_unmodeled_markers(positions) -> SimpleNamespace:
+    markers = [
+        SimpleNamespace(
+            model_id=0,
+            pos=position,
+            param=2,
+            occluded=False,
+            point_cloud_solved=True,
+            residual=0.001,
+        )
+        for position in positions
+    ]
+    return SimpleNamespace(
+        prefix=SimpleNamespace(frame_number=12),
+        suffix=SimpleNamespace(tracked_models_changed=False, timestamp=1.5),
+        rigid_bodies=[
+            SimpleNamespace(
+                id_num=1,
+                tracking_valid=False,
+                marker_error=None,
+                pos=(0.0, 0.0, 0.0),
+            )
+        ],
+        labeled_markers=markers,
+    )
+
+
+def test_unmodeled_centroid_tracks_exact_expected_marker_count() -> None:
+    collector = _collector_for_centroid()
+
+    collector._frame_callback(
+        _frame_with_unmodeled_markers(
+            [(0.0, 0.0, 0.0), (0.3, 0.0, 0.0), (0.0, 0.6, 0.0)]
+        )
+    )
+
+    result = collector.snapshot()[0]
+    assert result.tracking_valid
+    assert result.position_world == pytest.approx((0.1, 0.2, 0.0))
+    assert result.position_base == pytest.approx((0.1, 0.2, 0.0))
+    assert result.observed_marker_count == 3
+    assert result.rigid_body_error is None
+
+
+def test_unmodeled_centroid_rejects_extra_marker() -> None:
+    collector = _collector_for_centroid()
+
+    collector._frame_callback(
+        _frame_with_unmodeled_markers(
+            [(0.0, 0.0, 0.0), (0.3, 0.0, 0.0), (0.0, 0.6, 0.0), (1, 1, 1)]
+        )
+    )
+
+    result = collector.snapshot()[0]
+    assert not result.tracking_valid
+    assert result.position_world is None
+    assert result.observed_marker_count == 4
+
+
+def test_centroid_mode_dry_run_explains_marker_isolation(capsys) -> None:
+    result = main(
+        [
+            "--calibration",
+            str(CALIBRATION),
+            "--use-unmodeled-centroid",
+            "--expected-marker-count",
+            "3",
+        ]
+    )
+
+    assert result == 0
+    output = capsys.readouterr().out
+    assert "Centroid mode" in output
+    assert "Remove or cover all drone markers" in output

@@ -1,4 +1,4 @@
-"""Map OptiTrack coverage by hand-sweeping a Motive CW-250 rigid body."""
+"""Map OptiTrack coverage by hand-sweeping an OptiTrack CW-250 wand."""
 
 from __future__ import annotations
 
@@ -43,6 +43,7 @@ class NatNetCoverageCollector:
         target_name: str,
         transform: WorldBaseTransform,
         expected_marker_count: int | None,
+        use_unmodeled_centroid: bool,
     ) -> None:
         try:
             from natnet import NatNetClient
@@ -51,6 +52,7 @@ class NatNetCoverageCollector:
         self.target_name = target_name
         self.transform = transform
         self.requested_marker_count = expected_marker_count
+        self.use_unmodeled_centroid = use_unmodeled_centroid
         self._lock = Lock()
         self._ready = Event()
         self._target_id: int | None = None
@@ -59,6 +61,8 @@ class NatNetCoverageCollector:
         self._samples: list[CoverageSample] = []
         self._maximum_unmodeled_marker_count = 0
         self._maximum_target_marker_count = 0
+        if use_unmodeled_centroid and expected_marker_count is not None:
+            self._ready.set()
         self.client = NatNetClient(
             server_ip_address=server_ip,
             local_ip_address=local_ip,
@@ -110,14 +114,20 @@ class NatNetCoverageCollector:
         with self._lock:
             target_id = self._target_id
             expected = self._expected_marker_count
-        if target_id is None:
+        if target_id is None and not self.use_unmodeled_centroid:
             return
         body = next(
-            (item for item in frame.rigid_bodies if item.id_num == target_id),
+            (
+                item
+                for item in frame.rigid_bodies
+                if target_id is not None and item.id_num == target_id
+            ),
             None,
         )
         markers = [
-            marker for marker in frame.labeled_markers if marker.model_id == target_id
+            marker
+            for marker in frame.labeled_markers
+            if target_id is not None and marker.model_id == target_id
         ]
         unmodeled = [
             marker
@@ -125,16 +135,35 @@ class NatNetCoverageCollector:
             if marker.model_id == 0 and self._marker_is_observed(marker)
         ]
         observed = [marker for marker in markers if self._marker_is_observed(marker)]
+        selected_markers = unmodeled if self.use_unmodeled_centroid else observed
         residuals = [
             float(marker.residual)
-            for marker in observed
+            for marker in selected_markers
             if marker.residual is not None and math.isfinite(marker.residual)
         ]
-        valid = bool(body is not None and body.tracking_valid)
+        if self.use_unmodeled_centroid:
+            valid = bool(
+                expected > 0
+                and len(unmodeled) == expected
+                and all(
+                    len(marker.pos) == 3
+                    and all(math.isfinite(float(value)) for value in marker.pos)
+                    for marker in unmodeled
+                )
+            )
+        else:
+            valid = bool(body is not None and body.tracking_valid)
         world = None
         base = None
         rigid_error = None
-        if body is not None:
+        if self.use_unmodeled_centroid and valid:
+            world = tuple(
+                sum(float(marker.pos[axis]) for marker in unmodeled) / expected
+                for axis in range(3)
+            )
+            base_array = self.transform.world_to_base(world)
+            base = tuple(float(value) for value in base_array)
+        elif body is not None:
             rigid_error = (
                 None if body.marker_error is None else float(body.marker_error)
             )
@@ -149,7 +178,7 @@ class NatNetCoverageCollector:
             tracking_valid=valid,
             position_world=world,  # type: ignore[arg-type]
             position_base=base,  # type: ignore[arg-type]
-            observed_marker_count=len(observed),
+            observed_marker_count=len(selected_markers),
             expected_marker_count=expected,
             rigid_body_error=rigid_error,
             marker_residual_mean=(
@@ -177,9 +206,9 @@ class NatNetCoverageCollector:
         )
 
     @property
-    def target_id(self) -> int:
+    def target_id(self) -> int | None:
         with self._lock:
-            if self._target_id is None:
+            if self._target_id is None and not self.use_unmodeled_centroid:
                 raise CoverageError("target model is not ready")
             return self._target_id
 
@@ -202,11 +231,19 @@ class NatNetCoverageCollector:
         with self._lock:
             unmodeled = self._maximum_unmodeled_marker_count
             target_markers = self._maximum_target_marker_count
+        if self.use_unmodeled_centroid:
+            raise CoverageError(
+                "The unmodeled-marker centroid never became valid; "
+                f"expected exactly {self.expected_marker_count} reconstructed "
+                f"markers but observed at most {unmodeled}. Remove or cover all "
+                "other passive markers and keep all CW-250 markers visible."
+            )
         raise CoverageError(
             f"Motive rigid body {self.target_name!r} never became valid; "
             f"maximum target-labeled markers={target_markers}, maximum "
             f"unmodeled reconstructed markers={unmodeled}. Enable or recreate "
-            "the asset from the current CW-250 markers before sweeping."
+            "the asset from the current CW-250 markers before sweeping, or use "
+            "--use-unmodeled-centroid with no other passive markers present."
         )
 
     def close(self) -> None:
@@ -221,6 +258,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--multicast-ip", default="239.255.42.99")
     parser.add_argument("--target-name", default="coverage_wand")
     parser.add_argument("--expected-marker-count", type=int)
+    parser.add_argument(
+        "--use-unmodeled-centroid",
+        action="store_true",
+        help=(
+            "track the centroid of exactly the expected number of unmodeled "
+            "reconstructed markers instead of the Motive rigid-body pose"
+        ),
+    )
     parser.add_argument("--calibration", default=str(DEFAULT_CALIBRATION))
     parser.add_argument("--duration-s", type=float, default=120.0)
     parser.add_argument("--voxel-size-m", type=float, default=0.05)
@@ -261,7 +306,7 @@ def _write_results(
     *,
     args: argparse.Namespace,
     transform: WorldBaseTransform,
-    target_id: int,
+    target_id: int | None,
     expected_marker_count: int,
     samples: list[CoverageSample],
 ) -> dict[str, object]:
@@ -288,7 +333,16 @@ def _write_results(
             "name": args.target_name,
             "rigid_body_id": target_id,
             "expected_marker_count": expected_marker_count,
-            "probe": "OptiTrack CW-250 configured as a Motive rigid body",
+            "tracking_mode": (
+                "unmodeled_marker_centroid"
+                if args.use_unmodeled_centroid
+                else "motive_rigid_body"
+            ),
+            "probe": (
+                "centroid of exactly the expected number of unmodeled CW-250 markers"
+                if args.use_unmodeled_centroid
+                else "OptiTrack CW-250 configured as a Motive rigid body"
+            ),
         },
         "network": {
             "server_ip": args.server_ip,
@@ -318,6 +372,14 @@ def _write_results(
             "Unbounded leading/trailing dropouts cannot be spatially localized.",
             "Short dropout positions are linearly interpolated only between valid poses.",
             "A CW-250 rigid body is more observable than a single drone marker; use the per-marker completeness metric conservatively.",
+            *(
+                [
+                    "Centroid mode has no rigid-body orientation or marker identity.",
+                    "Centroid mode is valid only when every reconstructed unmodeled marker belongs to the CW-250.",
+                ]
+                if args.use_unmodeled_centroid
+                else []
+            ),
         ],
     }
     (output / "metadata.json").write_text(
@@ -337,12 +399,24 @@ def main(argv: list[str] | None = None) -> int:
             f"UR-base bounds: {tuple(args.bounds_min)} to {tuple(args.bounds_max)}, "
             f"voxel={args.voxel_size_m:.3f} m"
         )
-        if not args.execute:
+        if args.use_unmodeled_centroid:
             print(
-                "DRY RUN: create a Motive rigid body named "
-                f"{args.target_name!r} from the CW-250 markers, enable rigid-body "
-                "and labeled-marker streaming, then add --execute."
+                "Centroid mode: every frame must contain exactly the expected "
+                "number of unmodeled reconstructed markers. Remove or cover all "
+                "drone markers and other passive reflections."
             )
+        if not args.execute:
+            if args.use_unmodeled_centroid:
+                print(
+                    "DRY RUN: enable labeled-marker streaming, leave only the "
+                    "CW-250 markers visible, then add --execute."
+                )
+            else:
+                print(
+                    "DRY RUN: create a Motive rigid body named "
+                    f"{args.target_name!r} from the CW-250 markers, enable "
+                    "rigid-body and labeled-marker streaming, then add --execute."
+                )
             return 0
         collector = NatNetCoverageCollector(
             server_ip=args.server_ip,
@@ -351,6 +425,7 @@ def main(argv: list[str] | None = None) -> int:
             target_name=args.target_name,
             transform=transform,
             expected_marker_count=args.expected_marker_count,
+            use_unmodeled_centroid=args.use_unmodeled_centroid,
         )
         collector.wait_for_target(args.target_timeout_s)
         expected = collector.expected_marker_count
@@ -359,10 +434,19 @@ def main(argv: list[str] | None = None) -> int:
                 "Motive did not describe wand markers; pass --expected-marker-count"
             )
         collector.wait_for_valid_tracking(args.initial_valid_timeout_s)
-        print(
-            f"Connected to rigid body {args.target_name!r} "
-            f"(id={collector.target_id}, markers={expected})."
-        )
+        if args.use_unmodeled_centroid:
+            reference = (
+                "none" if collector.target_id is None else str(collector.target_id)
+            )
+            print(
+                f"Connected in unmodeled-centroid mode "
+                f"(reference model id={reference}, markers={expected})."
+            )
+        else:
+            print(
+                f"Connected to rigid body {args.target_name!r} "
+                f"(id={collector.target_id}, markers={expected})."
+            )
         print(
             "Sweep the CW-250 slowly through the flight volume. Press Ctrl+C to stop."
         )
