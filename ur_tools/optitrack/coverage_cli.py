@@ -57,6 +57,8 @@ class NatNetCoverageCollector:
         self._expected_marker_count = expected_marker_count or 0
         self._available_models: dict[int, str] = {}
         self._samples: list[CoverageSample] = []
+        self._maximum_unmodeled_marker_count = 0
+        self._maximum_target_marker_count = 0
         self.client = NatNetClient(
             server_ip_address=server_ip,
             local_ip_address=local_ip,
@@ -117,6 +119,11 @@ class NatNetCoverageCollector:
         markers = [
             marker for marker in frame.labeled_markers if marker.model_id == target_id
         ]
+        unmodeled = [
+            marker
+            for marker in frame.labeled_markers
+            if marker.model_id == 0 and self._marker_is_observed(marker)
+        ]
         observed = [marker for marker in markers if self._marker_is_observed(marker)]
         residuals = [
             float(marker.residual)
@@ -152,6 +159,12 @@ class NatNetCoverageCollector:
         )
         with self._lock:
             self._samples.append(sample)
+            self._maximum_unmodeled_marker_count = max(
+                self._maximum_unmodeled_marker_count, len(unmodeled)
+            )
+            self._maximum_target_marker_count = max(
+                self._maximum_target_marker_count, len(observed)
+            )
 
     def wait_for_target(self, timeout_s: float) -> None:
         if self._ready.wait(timeout_s):
@@ -179,6 +192,23 @@ class NatNetCoverageCollector:
         with self._lock:
             return list(self._samples)
 
+    def wait_for_valid_tracking(self, timeout_s: float) -> None:
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            with self._lock:
+                if any(sample.tracking_valid for sample in self._samples):
+                    return
+            time.sleep(0.05)
+        with self._lock:
+            unmodeled = self._maximum_unmodeled_marker_count
+            target_markers = self._maximum_target_marker_count
+        raise CoverageError(
+            f"Motive rigid body {self.target_name!r} never became valid; "
+            f"maximum target-labeled markers={target_markers}, maximum "
+            f"unmodeled reconstructed markers={unmodeled}. Enable or recreate "
+            "the asset from the current CW-250 markers before sweeping."
+        )
+
     def close(self) -> None:
         self.client.shutdown()
 
@@ -200,6 +230,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--minimum-voxel-samples", type=int, default=5)
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--target-timeout-s", type=float, default=10.0)
+    parser.add_argument("--initial-valid-timeout-s", type=float, default=5.0)
     return parser
 
 
@@ -214,6 +245,11 @@ def _validate_args(args: argparse.Namespace) -> None:
         raise CoverageError("minimum voxel samples must be positive")
     if not math.isfinite(args.target_timeout_s) or args.target_timeout_s <= 0:
         raise CoverageError("target timeout must be positive and finite")
+    if (
+        not math.isfinite(args.initial_valid_timeout_s)
+        or args.initial_valid_timeout_s <= 0
+    ):
+        raise CoverageError("initial valid timeout must be positive and finite")
 
 
 def _sha256(path: Path) -> str:
@@ -322,6 +358,7 @@ def main(argv: list[str] | None = None) -> int:
             raise CoverageError(
                 "Motive did not describe wand markers; pass --expected-marker-count"
             )
+        collector.wait_for_valid_tracking(args.initial_valid_timeout_s)
         print(
             f"Connected to rigid body {args.target_name!r} "
             f"(id={collector.target_id}, markers={expected})."

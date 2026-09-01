@@ -1,6 +1,7 @@
 import json
 import sys
 from pathlib import Path
+from threading import Lock
 from types import SimpleNamespace
 
 import pytest
@@ -15,7 +16,11 @@ from ur_tools.optitrack.coverage import (
     write_voxel_ply,
     write_voxels,
 )
-from ur_tools.optitrack.coverage_cli import NatNetCoverageCollector, main
+from ur_tools.optitrack.coverage_cli import (
+    CoverageError,
+    NatNetCoverageCollector,
+    main,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CALIBRATION = ROOT / "config" / "optitrack_to_ur_base.yaml"
@@ -155,3 +160,15 @@ def test_marker_observation_excludes_occluded_or_model_only_markers() -> None:
     assert NatNetCoverageCollector._marker_is_observed(observed)
     assert not NatNetCoverageCollector._marker_is_observed(occluded)
     assert not NatNetCoverageCollector._marker_is_observed(model_only)
+
+
+def test_invalid_wand_fails_fast_with_unmodeled_marker_diagnostic() -> None:
+    collector = object.__new__(NatNetCoverageCollector)
+    collector.target_name = "coverage_wand"
+    collector._lock = Lock()
+    collector._samples = [sample(0.0, valid=False)]
+    collector._maximum_target_marker_count = 0
+    collector._maximum_unmodeled_marker_count = 3
+
+    with pytest.raises(CoverageError, match="unmodeled reconstructed markers=3"):
+        collector.wait_for_valid_tracking(0.01)
