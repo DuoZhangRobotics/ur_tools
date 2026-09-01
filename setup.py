@@ -17,6 +17,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ur-optitrack-calibrate=ur_tools.optitrack.cli:main',
+            'ur-optitrack-coverage=ur_tools.optitrack.coverage_cli:main',
             'ur-optitrack-publisher=ur_tools.optitrack.natnet_pose_publisher:main',
         ],
     },

@@ -4,3 +4,4 @@ ur_tools.egg-info/
 .venv/
 .pytest_cache/
 calibration_results/
+coverage_results/
