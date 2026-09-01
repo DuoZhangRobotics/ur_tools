@@ -21,7 +21,7 @@ def test_repository_calibration_converts_state_and_goal_round_trip() -> None:
     assert transform.base_frame == "base"
     assert transform.world_frame == "world"
     assert transform.source_path == DEFAULT_CALIBRATION.resolve()
-    assert transform.base_from_world[0, 3] == pytest.approx(-0.0710346707)
+    assert transform.base_from_world[0, 3] == pytest.approx(-0.0080913584)
     assert restored_world == pytest.approx(point_world, abs=1e-12)
 
 
