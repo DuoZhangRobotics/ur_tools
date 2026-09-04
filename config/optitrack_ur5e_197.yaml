@@ -1,0 +1,72 @@
+schema_version: 1
+
+robot:
+  ip: 172.16.90.197
+  # Existing eye-to-hand calibration home. Review it on this UR5e before
+  # entering the execution confirmation.
+  home_joints:
+    [1.1242085695, -1.2143486899, 2.4404674212, -1.2285430890, 1.1332809925, 0.0]
+
+motion_capture:
+  motive_ip: 172.16.90.213
+  poses_topic: /poses
+  target_name: ur_calib
+
+frames:
+  base: base
+  mocap: world
+
+output_root: calibration_results
+
+motion:
+  joint_speed: 0.5
+  joint_acceleration: 0.5
+  tool_speed: 0.1
+  tool_acceleration: 0.5
+  # Explicit form of the previous 5x5 eye-to-hand workspace. The final three
+  # values are UR rotation vectors, not Euler roll/pitch/yaw angles.
+  poses:
+    - {name: pose_01, tcp_pose: [-0.050, -0.500, 0.150, 1.57, 0.0, 0.0]}
+    - {name: pose_02, tcp_pose: [-0.025, -0.500, 0.200, 1.56, 0.2, 0.2]}
+    - {name: pose_03, tcp_pose: [0.000, -0.500, 0.250, 1.56, -0.2, -0.2]}
+    - {name: pose_04, tcp_pose: [0.025, -0.500, 0.150, 1.56, -0.2, 0.2]}
+    - {name: pose_05, tcp_pose: [0.050, -0.500, 0.200, 1.56, 0.2, -0.2]}
+    - {name: pose_06, tcp_pose: [-0.050, -0.550, 0.250, 1.76, 0.0, 0.0]}
+    - {name: pose_07, tcp_pose: [-0.025, -0.550, 0.150, 1.36, 0.0, 0.0]}
+    - {name: pose_08, tcp_pose: [0.000, -0.550, 0.200, 1.57, 0.0, 0.0]}
+    - {name: pose_09, tcp_pose: [0.025, -0.550, 0.250, 1.56, 0.2, 0.2]}
+    - {name: pose_10, tcp_pose: [0.050, -0.550, 0.150, 1.56, -0.2, -0.2]}
+    - {name: pose_11, tcp_pose: [-0.050, -0.600, 0.200, 1.56, -0.2, 0.2]}
+    - {name: pose_12, tcp_pose: [-0.025, -0.600, 0.250, 1.56, 0.2, -0.2]}
+    - {name: pose_13, tcp_pose: [0.000, -0.600, 0.150, 1.76, 0.0, 0.0]}
+    - {name: pose_14, tcp_pose: [0.025, -0.600, 0.200, 1.36, 0.0, 0.0]}
+    - {name: pose_15, tcp_pose: [0.050, -0.600, 0.250, 1.57, 0.0, 0.0]}
+    - {name: pose_16, tcp_pose: [-0.050, -0.650, 0.150, 1.56, 0.2, 0.2]}
+    - {name: pose_17, tcp_pose: [-0.025, -0.650, 0.200, 1.56, -0.2, -0.2]}
+    - {name: pose_18, tcp_pose: [0.000, -0.650, 0.250, 1.56, -0.2, 0.2]}
+    - {name: pose_19, tcp_pose: [0.025, -0.650, 0.150, 1.56, 0.2, -0.2]}
+    - {name: pose_20, tcp_pose: [0.050, -0.650, 0.200, 1.76, 0.0, 0.0]}
+    - {name: pose_21, tcp_pose: [-0.050, -0.700, 0.250, 1.36, 0.0, 0.0]}
+    - {name: pose_22, tcp_pose: [-0.025, -0.700, 0.150, 1.57, 0.0, 0.0]}
+    - {name: pose_23, tcp_pose: [0.000, -0.700, 0.200, 1.56, 0.2, 0.2]}
+    - {name: pose_24, tcp_pose: [0.025, -0.700, 0.250, 1.56, -0.2, -0.2]}
+    - {name: pose_25, tcp_pose: [0.050, -0.700, 0.150, 1.56, -0.2, 0.2]}
+
+sampling:
+  settle_s: 0.5
+  window_s: 0.5
+  minimum_messages: 20
+  maximum_translation_std_m: 0.002
+  maximum_rotation_std_deg: 1.0
+  maximum_retries: 3
+  initial_tracking_s: 1.0
+
+solver:
+  minimum_samples: 15
+  holdout_every: 5
+  rotation_residual_scale_m_per_rad: 0.1
+  robust_loss_scale: 0.005
+  translation_rms_max_m: 0.005
+  translation_max_m: 0.010
+  rotation_rms_max_deg: 1.0
+  rotation_max_deg: 2.0

@@ -1,0 +1,16 @@
+/motion_capture_tracking:
+  ros__parameters:
+    type: optitrack
+    hostname: 172.16.90.213
+    topics:
+      frame_id: world
+      poses:
+        qos:
+          mode: sensor
+          deadline: 100.0
+      tf:
+        reference_frame: world
+        child_frame_fmt: "%s_mocap"
+    # Motive supplies the full-pose rigid body named ur_calib. No local
+    # unlabeled-marker model is used during this calibration.
+    rigid_bodies: {}

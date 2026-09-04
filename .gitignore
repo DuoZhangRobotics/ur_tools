@@ -1,3 +1,7 @@
 __pycache__/
 ur_tools.egg-info/
 *.egg-info/
+.venv/
+.pytest_cache/
+calibration_results/
+coverage_results/
